@@ -1192,11 +1192,11 @@ HTML_TEMPLATE = """
                 const cf = t.carry_forward ? 'Yes' : 'No';
                 const rr = t.rr !== undefined && t.rr !== null ? parseFloat(t.rr).toFixed(2) : '0.00';
 
-                } else {
-                    actCell = `<td style="text-align:center"><button class="btn-buy" onclick="buyScannedTrade(this, '${t.symbol||''}', '${t.contract||''}', '${t.side||'CE'}', ${t.entry_spot||0}, ${t.current_sl||t.sl||0}, ${t.t1||0}, ${t.t2||0}, ${t.t3||0}, '${eng}')" style="background:#2ea043;color:#ffffff;border:none;padding:4px 12px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px">BUY</button></td>`;
-                }
+                const symName = t.symbol || '';
+                const symLink = `<a href="javascript:void(0)" onclick="openTVChart('${symName}')" style="color:#58a6ff;font-weight:bold;text-decoration:none;" title="Click to view TradingView chart">${symName}</a>`;
+                let actCell = `<td style="text-align:center"><button class="btn-buy" onclick="openTVChart('${symName}')" style="background:#2962ff;color:#ffffff;border:none;padding:4px 12px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px">CHART 📈</button></td>`;
 
-                return `<tr><td>${t.symbol||''}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
+                return `<tr><td>${symLink}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
             }
             const engines = filter === 'all' ? ['nifty50', 'index'] : [filter];
             engines.forEach(eng => {
