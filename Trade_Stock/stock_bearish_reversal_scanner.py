@@ -17,17 +17,18 @@ from kiteconnect import KiteConnect
 
 LOOKBACK_DAYS = 120
 TOKEN_FILE = "input/kite_access_token.txt"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 TIMEFRAME_ENTRY = "day"
 TIMEFRAME_ANCHOR = "day"
 
-OUTPUT_FILE = f"output/exports/Nifty50_Daily_Scan_BEAR_{dt.now().strftime('%Y%m%d_%H%M')}.csv"
+OUTPUT_FILE = os.path.join(BASE_DIR, "output", "exports", f"Nifty50_Daily_Scan_BEAR_{dt.now().strftime('%Y%m%d_%H%M')}.csv")
 
 ACTIVE_POSITIONS = {}
 position_lock = threading.Lock()
-ANCHOR_SCAN_REQUEST_FILE = os.path.join("output", "monitor", "anchor_scan_request.txt")
-ANCHOR_SCAN_STOP_FILE = os.path.join("output", "monitor", "anchor_scan_stop.txt")
+ANCHOR_SCAN_REQUEST_FILE = os.path.join(BASE_DIR, "output", "monitor", "anchor_scan_request.txt")
+ANCHOR_SCAN_STOP_FILE = os.path.join(BASE_DIR, "output", "monitor", "anchor_scan_stop.txt")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SCAN_DISPLAY_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_display_data.json")
 JOURNAL_FILE = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
 
@@ -108,14 +109,13 @@ def run_scan(kite):
                     results.append({"Symbol": symbol, "Pattern": "NO_TOKEN"})
                 continue
             futures[pool.submit(
-                lambda t=tok: pd.DataFrame(kite.historical_data(t, from_date, to_date, fetch_tf))
+                lambda s=symbol: fetch_and_resample_candles(kite, s, from_date, to_date, TIMEFRAME_ENTRY)
             )] = symbol
-            time.sleep(0.2)
+            time.sleep(0.05)
         for f in as_completed(futures):
             symbol = futures[f]
             try:
-                df_raw = f.result()
-                df_e = resample_timeframe(df_raw, TIMEFRAME_ENTRY)
+                df_e = f.result()
             except Exception as e:
                 logging.warning(f"Data error for {symbol}: {e}")
                 with results_lock:

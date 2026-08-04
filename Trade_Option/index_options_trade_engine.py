@@ -84,11 +84,15 @@ class FlushFileHandler(logging.FileHandler):
         super().emit(record)
         self.flush()
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE_PATH = os.path.join(BASE_DIR, "output", "logs", "bull_index_trade_engine.log")
+os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        FlushFileHandler("output/logs/bull_index_trade_engine.log", mode="a", encoding="utf-8"),
+        FlushFileHandler(LOG_FILE_PATH, mode="a", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )

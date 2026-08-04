@@ -41,24 +41,24 @@ def get_kite_credentials():
     return api_key, api_secret
 
 
-TOKEN_FILE = "input/kite_access_token.txt"
-CONFIG_FILE = "input/program_config.json"
-STATE_FILE = "output/monitor/stock_positions_state.json"
-JOURNAL_FILE = "output/monitor/trade_journal.csv"
-INDEX_LOG_FILE = "output/logs/bull_index_trade_engine.log"
-NIFTY50_LOG_FILE = "output/logs/bull_nifty50_scanner.log"
-DAILY_LOG_FILE = "output/logs/bull_daily_scanner.log"
-BEAR_LOG_FILE = "output/logs/bull_bear_daily_scanner.log"
-SCAN_DISPLAY_FILE = "output/monitor/scan_display_data.json"
-SCAN_DISPLAY_INDEX_FILE = "output/monitor/scan_display_index.json"
-LIVE_EXECUTION_FLAG = "input/nifty50_live.flag"
-LIVE_EXECUTION_FLAG_INDEX = "input/index_live.flag"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+TOKEN_FILE = os.path.join(BASE_DIR, "input", "kite_access_token.txt")
+CONFIG_FILE = os.path.join(BASE_DIR, "input", "program_config.json")
+STATE_FILE = os.path.join(BASE_DIR, "output", "monitor", "stock_positions_state.json")
+JOURNAL_FILE = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
+INDEX_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_index_trade_engine.log")
+NIFTY50_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_nifty50_scanner.log")
+DAILY_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_daily_scanner.log")
+BEAR_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_bear_daily_scanner.log")
+SCAN_DISPLAY_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_display_data.json")
+SCAN_DISPLAY_INDEX_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_display_index.json")
+LIVE_EXECUTION_FLAG = os.path.join(BASE_DIR, "input", "nifty50_live.flag")
+LIVE_EXECUTION_FLAG_INDEX = os.path.join(BASE_DIR, "input", "index_live.flag")
 
 DASHBOARD_PORT = 5051
 REFRESH_SECONDS = 1
 ACTIVE_EDIT_LOCKS = set()
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PROGRAMS = {
     "daily": {
@@ -319,13 +319,10 @@ def load_journal():
 def get_best_log_file(filepath):
     if not filepath:
         return ""
-    root_dir = os.path.dirname(BASE_DIR)
     candidates = [
-        filepath,
-        os.path.join(BASE_DIR, filepath),
-        os.path.join(root_dir, filepath),
-        os.path.join(root_dir, "output", "logs", os.path.basename(filepath)),
         os.path.join(BASE_DIR, "output", "logs", os.path.basename(filepath)),
+        os.path.join(BASE_DIR, filepath),
+        filepath,
     ]
     existing = []
     for c in candidates:
@@ -2788,7 +2785,7 @@ def api_exit_all_positions():
         logging.error(f"Exit All API failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
-EXPORT_STATE_FILE = "output/monitor/export_state.json"
+EXPORT_STATE_FILE = os.path.join(BASE_DIR, "output", "monitor", "export_state.json")
 
 # ──────────────────────────────────────────────
 #  MONTHLY EXPORT (trades to Excel archive)
@@ -2872,7 +2869,7 @@ def run_monthly_export():
         parts = ts.split(" ")[0].split("-") if " " in ts else ts.split("-")
         key = (parts[0], parts[1]) if len(parts) >= 2 else ("unknown", "00")
         groups[key].append(t)
-    out_dir = "output/exports"
+    out_dir = os.path.join(BASE_DIR, "output", "exports")
     os.makedirs(out_dir, exist_ok=True)
     xl_path = os.path.join(out_dir, "trade_archive.xlsx")
     sheet_names = []
@@ -2927,9 +2924,9 @@ def auto_export_if_new_month():
         print(f"Auto-export error: {e}")
 
 def main():
-    os.makedirs("input", exist_ok=True)
-    os.makedirs("output/logs", exist_ok=True)
-    os.makedirs("output/monitor", exist_ok=True)
+    os.makedirs(os.path.join(BASE_DIR, "input"), exist_ok=True)
+    os.makedirs(os.path.join(BASE_DIR, "output", "logs"), exist_ok=True)
+    os.makedirs(os.path.join(BASE_DIR, "output", "monitor"), exist_ok=True)
     os.makedirs("logs", exist_ok=True)
     auto_export_if_new_month()
     worker = threading.Thread(target=refresh_data, daemon=True)

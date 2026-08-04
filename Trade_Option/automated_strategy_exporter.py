@@ -33,12 +33,15 @@ from trading_core import (
 
 BASE_EXPORT_DIR = r"G:\Poovendan\AI\Trading\Share\Export_output\Automated"
 
-os.makedirs("output/logs", exist_ok=True)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "automated_strategy_exporter.log")
+os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("output/logs/automated_strategy_exporter.log", mode="a", encoding="utf-8"),
+        logging.FileHandler(LOG_FILE, mode="a", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )

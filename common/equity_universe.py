@@ -96,7 +96,8 @@ def get_universe_symbols_and_tokens(kite=None, target_index_name="NIFTY50"):
             token_map[sym] = STOCK_REGISTRY[sym]["token"]
 
     missing_symbols = [s for s in symbols if s not in token_map or token_map[s] == 0]
-    if missing_symbols and kite:
+    acc_t = getattr(kite, "access_token", "") if kite else ""
+    if missing_symbols and kite and acc_t and acc_t != "open_source_token":
         if not _NSE_TOKEN_CACHE:
             try:
                 logging.info(f"Fetching NSE instrument master for universe '{target_index_name}' ({len(missing_symbols)} missing tokens)...")

@@ -1054,20 +1054,18 @@ def fetch_open_source_candles(token_or_sym, timeframe_str, from_date=None, to_da
     return resample_timeframe(df, timeframe_str)
 
 def fetch_and_resample_candles(kite, token, from_date, to_date, timeframe_str):
-    if kite is not None and hasattr(kite, "historical_data") and getattr(kite, "access_token", None) and getattr(kite, "access_token", "") != "open_source_token":
+    acc_token = getattr(kite, "access_token", "") if kite else ""
+    if kite is not None and hasattr(kite, "historical_data") and acc_token and acc_token != "open_source_token":
         fetch_tf = get_fetch_timeframe(timeframe_str)
         if hasattr(kite, "timeout") and not kite.timeout:
             kite.timeout = 10
-        raw = None
-        for attempt in range(2):
-            try:
-                raw = kite.historical_data(token, from_date, to_date, fetch_tf)
-                break
-            except Exception:
-                time.sleep(0.2)
-        if raw:
-            df = pd.DataFrame(raw)
-            return resample_timeframe(df, timeframe_str)
+        try:
+            raw = kite.historical_data(token, from_date, to_date, fetch_tf)
+            if raw:
+                df = pd.DataFrame(raw)
+                return resample_timeframe(df, timeframe_str)
+        except Exception:
+            pass
 
     return fetch_open_source_candles(token, timeframe_str, from_date, to_date)
 
