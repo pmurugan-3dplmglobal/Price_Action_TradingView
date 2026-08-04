@@ -1,0 +1,22 @@
+{
+  "start_date": "2026-07-20",
+  "end_date": "2026-07-25",
+  "user": "Poovendan",
+  "execution_time_seconds": 34.4,
+  "index_options_15m": {
+    "total_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "active": 0,
+    "win_rate": 0.0,
+    "trades": []
+  },
+  "stock_options_30m": {
+    "total_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "active": 0,
+    "win_rate": 0.0,
+    "trades": []
+  }
+}

@@ -1,0 +1,268 @@
+# Price Action Trading Strategy — Master Documentation Blueprint (Prod Code v02)
+# Consolidated Master Reference Blueprint (Single Source of Truth)
+
+meta:
+  name: Price Action Unified Strategy System (TradingView Open-Source Edition)
+  version: TradingView Open-Source v01 (Cloned from Prod Code v02)
+  platform: TradingView Open-Source + Yahoo Finance Data Feed (Zero API Key / Credentials Required)
+  architecture: Centralized Shared Core (common/) + Dual Workspaces (Trade_Option & Trade_Stock) + TradingView Interactive Charts
+  strategy: Unified ABC Bullish & Bearish Reversal Pattern Engine
+  coverage:
+    - Index Options & Spot (NIFTY, BANKNIFTY, SENSEX)
+    - Stock Options & Spot (50 Nifty 50 constituent stocks)
+    - Stock Spot Bullish Reversals (stock_bullish_reversal_scanner.py)
+    - Stock Spot Bearish Reversals (stock_bearish_reversal_scanner.py)
+
+architecture:
+  diagram: |
+    Browser (localhost:5050 / localhost:5051)
+      ├── Trade_Option Dashboard (app_option_Trade.py: 5050)
+      │     ├── Index Options Engine (index_options_trade_engine.py)
+      │     └── Stock Options Engine (stock_options_trade_engine.py)
+      └── Trade_Stock Dashboard (app_Sock_Trade.py: 5051)
+            ├── Stock Bull Reversal (stock_bullish_reversal_scanner.py)
+            └── Stock Bear Reversal (stock_bearish_reversal_scanner.py)
+                  │
+                  ▼
+          Centralized Shared Core (common/)
+            ├── trading_core.py (Scanners, Negation Theory, Resampling, Registries)
+            ├── trade_db.py (Thread-safe JSON persistence & staging)
+            └── Kite_Access_Token_gen.py (Daily Zerodha OAuth token CLI)
+
+  directory:
+    common:
+      trading_core.py: "Centralized strategy core: scan_anchor_bcd_breakout_generic, 5 Bullish + 5 Bearish anchor detectors, find_profit_targets, find_profit_targets_bearish, resample_timeframe (4h), get_adaptive_lookback, STOCK_REGISTRY (50 stocks), INDEX_REGISTRY (NIFTY, BANKNIFTY, SENSEX), session loading, market hours check, journal writer"
+      trade_db.py: "Thread-safe JSON trade database, cycle staging, and executed pattern deduplication"
+      Kite_Access_Token_gen.py: "Zerodha Kite OAuth access token generator CLI"
+    Trade_Option:
+      app_option_Trade.py: "Options Dashboard (port 5050) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
+      index_options_trade_engine.py: "Intraday index options engine (NIFTY, BANKNIFTY, SENSEX with BFO exchange routing)"
+      stock_options_trade_engine.py: "Nifty 50 stock options scanner & executor"
+      automated_strategy_exporter.py: "Plan 1 Multi-Timeframe Automated Daily Exporter (Index: 3m/5m/15m, Stock Option: 15m/60m)"
+      run_export_scheduler_daemon.py: "Background Scheduler Daemon for 10:30 AM, 1:00 PM, and 3:15 PM exports"
+    Trade_Stock:
+      app_Sock_Trade.py: "Stock Trade Dashboard (port 5051) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
+      stock_bullish_reversal_scanner.py: "Stock Bullish Reversal Scanner & Exporter"
+      stock_bearish_reversal_scanner.py: "Stock Bearish Reversal Scanner & Exporter"
+    backtest:
+      run_official_option_strike_backtest.py: "Official Multi-day Option Strike & Spot Backtest Runner"
+      run_kite_master_backtest.py: "Kite Connect API Historical Multi-day Backtest Suite"
+      run_master_backtest.py: "Yahoo Finance / Historical Data Master Backtest Engine"
+      backtest_simulation.py: "Parallelized Stock Options & Spot Simulation Engine"
+      master_backtest_results.json: "JSON Export of latest master backtest run results"
+      test_fetch.py: "Quick Yahoo Finance API candle fetch test script"
+      test_option_strike_fetch.py: "Zerodha NFO Option Strike token & candle fetch test script"
+      test_spot_scan.py: "Spot & Option pattern scanner verification test script"
+
+config_precedence:
+  priority_1: "Manual UI User Edits (overrides in sl_target_overrides.json & active_positions_db.json)"
+  priority_2: "Persistent Config / Stored DB (input/program_config.json, trades_db.json)"
+  priority_3: "Adaptive Defaults (calculated dynamically based on active timeframe & asset class)"
+
+timeframe_resampling:
+  native_kite_tfs: ["minute", "3minute", "5minute", "10minute", "15minute", "30minute", "60minute", "day"]
+  resampled_tfs:
+    "75min": "Resampled from 15minute candles into 75min bars (5 candles/day: 09:15-10:30, 10:30-11:45, 11:45-13:00, 13:00-14:15, 14:15-15:30) using Pandas resample('75min', offset='15min')"
+    "4hr": "Resampled from 60minute candles into 240min bars using Pandas resample('240min')"
+    "week": "Resampled from daily candles into Friday-ending weekly bars using Pandas resample('W-FRI')"
+  stock_trade_rule: "Trade_Stock scanners default strictly to 'day' candles unless configured via UI/program_config.json"
+  supported_stock_tfs: ["day", "week", "4hr", "1hr", "75min", "30min", "15min"]
+  adaptive_lookback:
+    intraday: "30 - 60 calendar days for 3m/5m/10m/15m/30m"
+    hourly: "180 - 365 calendar days for 60m/1hr/75min/4hr"
+    daily_weekly: "2000 calendar days for day/1d/week/1w (scans 52-week & multi-year swing targets)"
+
+engines:
+  case_a_index_options:
+    id: "index"
+    name: "Index Options Engine (NIFTY, BANKNIFTY, SENSEX)"
+    file: "Trade_Option/index_options_trade_engine.py"
+    asset_class: "INDEX_OPTION"
+    side: "BULL"
+    instruments: ["NIFTY", "BANKNIFTY", "SENSEX"]
+    strike_range: "ATM ± X strikes (Default: 0, configurable in program_config.json / UI)"
+    defaults: {timeframe_entry: "3minute", timeframe_anchor: "15minute", risk_percent: 1.0, capital: 100000}
+
+  case_b_stock_options:
+    id: "nifty50"
+    name: "Nifty 50 Stock Options Engine"
+    file: "Trade_Option/stock_options_trade_engine.py"
+    asset_class: "STOCK_OPTION"
+    side: "BULL"
+    instruments: "Nifty 50 Constituent Stock Options"
+    strike_range: "ATM ± X strikes (Default: 0, configurable in program_config.json / UI)"
+    defaults: {timeframe_entry: "15minute", timeframe_anchor: "30minute", risk_percent: 10.0, capital: 100000}
+
+  case_c_stock_spot_bull:
+    id: "daily"
+    name: "Stock_Bullish_Reversal_Scanner"
+    file: "Trade_Stock/stock_bullish_reversal_scanner.py"
+    asset_class: "STOCK_SPOT"
+    side: "BULL"
+    instruments: "Nifty 50 Constituent Stocks (Spot)"
+    defaults: {timeframe_entry: "day", timeframe_anchor: "day", lookback_days: 2000}
+
+  case_d_stock_spot_bear:
+    id: "bear_trade"
+    name: "Stock_Bearish_Reversal_Scanner"
+    file: "Trade_Stock/stock_bearish_reversal_scanner.py"
+    asset_class: "STOCK_SPOT"
+    side: "BEAR"
+    instruments: "Nifty 50 Constituent Stocks (Spot)"
+    defaults: {timeframe_entry: "day", timeframe_anchor: "day", lookback_days: 2000}
+
+backtest_suite:
+  directory: "backtest/"
+  runners:
+    official_strike_runner: "backtest/run_official_option_strike_backtest.py"
+    kite_historical_runner: "backtest/run_kite_master_backtest.py"
+    master_runner: "backtest/run_master_backtest.py"
+    simulation_engine: "backtest/backtest_simulation.py"
+  output:
+    results_json: "backtest/master_backtest_results.json"
+    exports_csv: "Trade_Option/output/exports/"
+  tests:
+    - "backtest/test_fetch.py"
+    - "backtest/test_option_strike_fetch.py"
+    - "backtest/test_spot_scan.py"
+
+  strategy_rules:
+    core_architectural_thumb_rule:
+      rule_name: "Non-Negotiable Architecture Thumb Rule: Feature Isolation & Zero Regression"
+      fundamental_principle: "New features, modules, or tools (e.g. Negation Analyzer, Exporters) MUST be strictly isolated and MUST NEVER alter, degrade, or break existing working functionality."
+      enforcement_guidelines:
+        - "Engine Separation: Index Options Engine (index_options_trade_engine.py / app_option_Trade.py) and Stock Options Engine (stock_options_trade_engine.py / app_Sock_Trade.py) must maintain clear workspace and display isolation."
+        - "Default View Integrity: Web UI dashboards must default their view filters to their corresponding core engine (Index Dashboard defaults to 'Index', Stock Dashboard defaults to 'Nifty 50')."
+        - "Independent Testing: Any new API endpoint or scanner tool must be tested in isolation to verify zero side-effects on active trade execution, position recovery, and display files."
+
+    anchor_selection_and_invalidation:
+      rule_name: "Universal Anchor Validity & Activity Rule (is_anchor_valid_and_active)"
+      anchor_selection: "Scanners must select the NEWEST (most recent) valid Anchor candle in the chart."
+      timeframe_scope: "STRICTLY SPECIFIC TO ANCHOR TIMEFRAME (df_anchor). Evaluated exclusively on candles of timeframe_anchor."
+      invalidation_conditions:
+        - "SL Violation: Discard setup if any subsequent candle on df_anchor closed below SL (closing basis)."
+        - "Target 1 Pre-Hit: Discard setup if any subsequent candle on df_anchor touched T1 (high price >= T1)."
+      generic_enforcement: "Applied universally across stock_options_trade_engine.py, index_options_trade_engine.py, scan_anchor_bcd_breakout(), scan_symbol(), and UI APIs."
+
+    target_derivation_and_timeframes:
+      default_anchor_tf: "Nifty 50 Stock Options & Spot default strictly to 30minute (Same Entry & Anchor TF: timeframe_entry='30minute', timeframe_anchor='30minute'). Index Options default to 15minute."
+      derivation_method: "All profit targets (T1, T2, T3) are derived strictly from df_anchor candles using Negation Theory (find_profit_targets / find_profit_targets_bearish)."
+      target_buffers:
+        cheap_options: "Price <= 50: Early exit buffer = max(0.50, Target * 1.5%)"
+        mid_options: "Price 50-200: Early exit buffer = max(1.00, Target * 1.5%)"
+        spots_high_options: "Price > 200: Early exit buffer = max(2.00, Target * 1.0%)"
+      missing_targets_exit_rule: "If T2/T3 are N/A (None), reaching T1 minus early exit buffer triggers a 100% full position exit."
+
+    pattern_priority:
+      - "1. Bullish Engulfing / Bearish Engulfing (ABCD)"
+      - "2. Lower Low (LL) Sweep / Higher High (HH) Sweep"
+      - "3. Two Higher Highs / Two Lower Lows"
+      - "4. Baby Candle / Shooting Star"
+      - "5. Bullish Harami / Bearish Harami"
+      - "Rule: First valid pattern matching R:R >= 1.88 triggers setup."
+
+    risk_management:
+      check_interval: "Every 5 seconds / WebSocket heartbeat daemon"
+      stages:
+        sl_hit: "Exit full position (EXIT_SL)"
+        t1_hit: "Move SL to Entry / Breakeven (TRAIL_BE), or FULL EXIT if T2/T3 are N/A"
+        t2_hit: "Move SL to T1 level (TRAIL_T1)"
+        t3_hit: "Exit full position (EXIT_T3)"
+      setup_classification:
+        fresh_entry: "HIGH_PRIORITY: Post-D candles have not hit T1 or SL yet. SL at original A.low buffer."
+        t2_continuation: "LOW_PRIORITY: Post-D candles ALREADY hit T1, but T2/T3 is still pending and unreached. SL trailed to T1 level."
+        expired: "REJECTED: Post-D candles closed below SL OR completed all targets (T3)."
+
+  bullish_patterns:
+    - id: 1
+      name: "Bullish Engulfing (A-B-C-D)"
+      anchor: "Bullish candle wrapping prior bearish candle body+wick"
+      breakout: "Close > A.high"
+      retest: "Low <= A.high AND Close > A.low"
+      confirmation: "Close > A.high"
+      sl: "A.low - buffer"
+      targets: "Negation theory non-negated swing high resistance levels T1, T2, T3"
+    - id: 2
+      name: "Lower Low (LL) Sweep"
+      anchor: "Sweep candle dips below Low1; bounce candle recovers & closes above sweep high"
+      breakout: "Close > B.high"
+      sl: "Sweep Candle Low - buffer"
+    - id: 3
+      name: "Two Higher Highs"
+      anchor: "Two successive higher-high bullish candles (A1, A2)"
+      sl: "Min(A1.low, A2.low) - buffer"
+    - id: 4
+      name: "Baby Candle / Pinbar / Hammer"
+      anchor: "Small baby/hammer candle inside bearish mother body with lower wick"
+      sl: "Baby Low - buffer"
+    - id: 5
+      name: "Bullish Harami (Inside Bar)"
+      anchor: "Bullish inside bar inside bearish mother candle body"
+      sl: "Inside Low - buffer"
+
+  bearish_patterns:
+    - id: 1
+      name: "Bearish Engulfing (A-B-C-D)"
+      anchor: "Bearish candle wrapping prior bullish candle body+wick"
+      breakout: "Close < A.low"
+      retest: "High >= A.low AND Close < A.high"
+      confirmation: "Close < A.low"
+      sl: "A.high + buffer"
+      targets: "Negation theory non-negated swing low support levels T1, T2, T3"
+    - id: 2
+      name: "Higher High (HH) Sweep"
+      anchor: "Sweep candle rallies above High1; rejection candle closes back below"
+      breakout: "Close < B.low"
+      sl: "Sweep Candle High + buffer"
+    - id: 3
+      name: "Two Lower Lows"
+      anchor: "Two successive lower-low bearish candles (A1, A2)"
+      sl: "Max(A1.high, A2.high) + buffer"
+    - id: 4
+      name: "Shooting Star / Bearish Baby Candle"
+      anchor: "Small shooting star/baby candle inside bullish mother body with upper wick"
+      sl: "Baby High + buffer"
+    - id: 5
+      name: "Bearish Harami (Inside Bar)"
+      anchor: "Bearish inside bar inside bullish mother candle body"
+      sl: "Inside High + buffer"
+
+registries:
+  indices:
+    NIFTY: {token: 256265, lot_size: 65, strike_step: 50, exchange: "NFO"}
+    BANKNIFTY: {token: 260105, lot_size: 30, strike_step: 100, exchange: "NFO"}
+    SENSEX: {token: 265, lot_size: 10, strike_step: 100, exchange: "BFO"}
+  stocks:
+    count: 50
+    constituents: "All 50 Nifty 50 stocks with auto-sync from Zerodha NSE instrument master"
+
+deployment:
+  cloud_provider: "Oracle Cloud Always Free (4 ARM cores, 24GB RAM, Ubuntu 24.04)"
+  ports:
+    options_dashboard: 5050
+    stock_dashboard: 5051
+
+pattern_shorthands:
+  description: "Explicit pattern codes used in UI Dashboard table & CSV Export to prevent ambiguity between Bullish and Bearish setups"
+  bullish_patterns:
+    BULL_2HH: "Two Higher Highs Bullish Setup (BULL_A_Two_Higher_Highs)"
+    BULL_LL: "Lower Low Sweep Bullish Setup (BULL_A_LL_Sweep_Var2)"
+    BULL_ENG: "Bullish Engulfing Setup (BULL_A_ABCD_Engulf)"
+    BULL_HAM: "Baby Candle / Hammer Setup (BULL_A_Baby_Candle)"
+    BULL_HAR: "Bullish Harami Setup (BULL_A_Bullish_Harami)"
+    BULL_BASE: "Base ABCD Breakout Setup (BASE_ABCD)"
+  bearish_patterns:
+    BEAR_HH: "Higher High Sweep Bearish Reversal (find_anchor_hh_sweep)"
+    BEAR_2LL: "Two Lower Lows Bearish Setup (find_anchor_two_lower_lows)"
+    BEAR_ENG: "Bearish Engulfing Setup (find_anchor_bearish_engulfing)"
+    BEAR_STAR: "Shooting Star / Bearish Baby Setup (find_anchor_shooting_star_baby)"
+    BEAR_HAR: "Bearish Harami Setup (find_anchor_bearish_harami)"
+  csv_export_alignment: "CSV exports match UI display table 1-to-1 in column order, numeric rounding (2 decimal places), formatted DD-MM-YY HH:MM timestamps, Yes/No CarryForward, and explicit pattern shorthands"
+
+sl_buffer_scaling:
+  description: "Dynamic asset & price-tiered Stop Loss buffer (calculate_sl_buffer) to prevent SL inflation on cheap option contracts"
+  tiers:
+    cheap_options: "Price < ₹50: max(0.15, Price * 2%)  (e.g., 0.15 - 0.20 pt buffer for ~₹7.50 options)"
+    mid_options: "₹50 <= Price < ₹200: max(0.50, Price * 1.5%)"
+    high_options_stock: "₹200 <= Price < ₹500: max(1.00, Price * 1.0%)"
+    index_spot: "Price >= ₹500: max(2.00, Price * 0.5%)"

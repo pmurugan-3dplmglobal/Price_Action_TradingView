@@ -1,0 +1,301 @@
+# Price Action Trading Strategy — Issue Management & Resolution Journal
+# Master Diagnostic & Maintenance Log (Single Source of Truth for Bugs & Solutions)
+
+meta:
+  system: Price Action Unified Strategy System
+  version: Prod Code v02
+  last_updated: "2026-07-28"
+  purpose: Document operational failures, root causes, regression fixes, and system enhancements.
+
+issues:
+  - id: ISSUE-001
+    title: Option Engine Background Thread Pause / Stalling
+    severity: HIGH
+    category: Concurrency & Thread Locking
+    date_reported: "2026-07-28"
+    symptom: |
+      Stock Options Trade Engine logs paused after "TF: 60minute | Interval: 30s | Risk: 10.0%" with no scan updates for 15+ minutes.
+    root_cause: |
+      Background thread lock contention on position_lock in common/trading_core.py.
+      Thread t1 (position_monitor_loop) called monitor_active_positions, which held position_lock while making HTTP network API calls (fetch_and_resample_candles and kite.quote).
+      Thread t2 (main_scan_loop) attempted to acquire position_lock during run_scan_cycle and blocked indefinitely waiting for network I/O to release the lock.
+    affected_files:
+      - common/trading_core.py
+    resolution: |
+      Narrowed position_lock scope inside monitor_active_positions.
+      Network HTTP candle/quote calls now execute outside position_lock, and position_lock guards fast (~1ms) local memory dictionary updates only.
+    status: RESOLVED
+
+  - id: ISSUE-002
+    title: Empty Scan Tab on Option Dashboard
+    severity: HIGH
+    category: Persistence & UI Serialization
+    date_reported: "2026-07-28"
+    symptom: |
+      Dashboard Scan Tab became empty during routine scan execution, empty scan cycles, or web app launch.
+    root_cause: |
+      1. Expired Zerodha access_token string in Trade_Stock/input/kite_access_token.txt causing stock quote lookups to fail silently.
+      2. In common/trading_core.py write_scan_display_data, deduplication was erroneously using underlying stock symbol (symbol) instead of contract name (contract). Multiple staged option contracts for the same stock collapsed down to 1 single trade, and empty scan cycles cleared preserved staged trades.
+      3. In app_option_Trade.py & app_Sock_Trade.py, the web app refresh loop (_last_scan_reset) blindly overwrote SCAN_DISPLAY_FILE with empty staged_trades: [] on web app launch.
+    affected_files:
+      - common/trading_core.py
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - Trade_Stock/input/kite_access_token.txt
+      - Trade_Option/input/kite_access_token.txt
+    resolution: |
+      1. Synchronized active Zerodha OAuth access token across all workspace input directories.
+      2. Fixed write_scan_display_data deduplication to group by _trade_key(t) (unique option contract key, e.g., COALINDIA26AUG410CE).
+      3. Updated web app refresh loop (_last_scan_reset) to inspect existing file contents and preserve today's staged trades on startup.
+    status: RESOLVED
+
+  - id: ISSUE-003
+    title: FileNotFoundError on FlushFileHandler Initialization
+    severity: MEDIUM
+    category: Environment & Logging
+    date_reported: "2026-07-28"
+    symptom: |
+      Launching stock_options_trade_engine.py outside Trade_Option directory threw FileNotFoundError: [Errno 2] No such file or directory: 'output/logs/bull_nifty50_scanner.log'.
+    root_cause: |
+      FlushFileHandler expected the output/logs directory to already exist in the working directory before creating the log file.
+    affected_files:
+      - Trade_Option/stock_options_trade_engine.py
+    resolution: |
+      Added os.makedirs(os.path.dirname("output/logs/bull_nifty50_scanner.log"), exist_ok=True) prior to logging.basicConfig initialization.
+    status: RESOLVED
+
+  - id: ISSUE-004
+    title: Download Export Filename Overwritten to Static scan_export.csv
+    severity: LOW
+    category: Dashboard UX
+    date_reported: "2026-07-28"
+    symptom: |
+      Clicking the "Export Scan CSV" button on the UI downloaded a file named scan_export.csv without any date/time timestamp.
+    root_cause: |
+      Frontend JavaScript in app_option_Trade.py and app_Sock_Trade.py hardcoded a.download = 'scan_export.csv', overriding the server's Content-Disposition header.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+    resolution: |
+      Updated frontend JavaScript and Flask HTTP response headers to format export files dynamically as scan_export_DD_MM_YY_HHMM.csv (e.g., scan_export_28_07_26_2230.csv).
+    status: RESOLVED
+
+  - id: ISSUE-005
+    title: Strike Range (±) Config Field Missing in Stock Options Dashboard UI
+    severity: LOW
+    category: Feature Parity & Configuration
+    date_reported: "2026-07-28"
+    symptom: |
+      The "Strike Range (±)" configuration control was present for Index Options but missing from the Stock Options Trade Engine settings panel in the Web UI.
+    root_cause: |
+      The nifty50 entry in PROGRAMS["nifty50"]["config_fields"] in app_option_Trade.py lacked the strike_range UI field definition and default value.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Option/input/program_config.json
+      - Trade_Stock/input/program_config.json
+    resolution: |
+      Added "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0} to nifty50 config fields in app_option_Trade.py and set "strike_range": 0 (ATM strike) across program_config.json files.
+    status: RESOLVED
+
+  - id: ISSUE-006
+    title: SENSEX BFO Exchange Routing Mismatch
+    severity: HIGH
+    category: Multi-Exchange API Integration
+    date_reported: "2026-07-30"
+    symptom: |
+      Exit failed for SENSEX26JUL77700PE: 'NFO:SENSEX26JUL77700PE' when attempting entry or exit on Zerodha Kite.
+    root_cause: |
+      Hardcoded NFO exchange in close_position and execute_index_entry. SENSEX options trade on BFO (BSE Options), causing Zerodha to reject quotes and orders.
+    affected_files:
+      - common/trading_core.py
+      - Trade_Option/index_options_trade_engine.py
+    resolution: |
+      Updated close_position in common/trading_core.py and execute_index_entry in index_options_trade_engine.py to dynamically inspect contract string and route SENSEX/BSE contracts to BFO, NIFTY/BANKNIFTY to NFO, and stock spot to NSE.
+    status: RESOLVED
+
+  - id: ISSUE-007
+    title: Pending Exit LIMIT Order Execution Stalling
+    severity: HIGH
+    category: Order Execution & Market Dynamics
+    date_reported: "2026-07-30"
+    symptom: |
+      Position monitor submitted LIMIT exit order, but when option prices dropped rapidly, order remained OPEN/unfilled in Zerodha orderbook and exit guard blocked secondary retry.
+    root_cause: |
+      Rigid is_contract_exit_executed check blocked subsequent exit handling while LIMIT order was stuck unfilled in orderbook.
+    affected_files:
+      - common/trading_core.py
+    resolution: |
+      Enhanced close_position in common/trading_core.py to check Zerodha order status via API. If an exit order remains OPEN/unfilled while price moves lower, it cancels the pending limit order and fires an immediate MARKET sell fallback order.
+    status: RESOLVED
+
+  - id: ISSUE-008
+    title: False Stop Loss Wick Exits
+    severity: MEDIUM
+    category: Risk Management & Signal Validation
+    date_reported: "2026-07-30"
+    symptom: |
+      Temporary price wicks or micro-dips triggered false stop loss exits on options before recovery.
+    root_cause: |
+      Immediate exit on instantaneous tick price ltp <= sl without noise buffer or candle close confirmation.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+    resolution: |
+      Added 0.5% Stop Loss Noise Buffer (sl_buffered = SL * 0.995) and required previous 15-minute candle close confirmation (prev_candle.close <= SL) before triggering SL exit. Retained 1.5% emergency crash protection break.
+    status: RESOLVED
+
+  - id: ISSUE-009
+    title: 1-Click BUY Feature Implementation on Scan Tab
+    severity: ENHANCEMENT
+    category: Dashboard UX & Live Trading
+    date_reported: "2026-07-30"
+    symptom: |
+      Users had to manually place trades on Kite terminal for staged scan setups.
+    root_cause: |
+      Missing interactive 1-click execution controls on Scan Tab table.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+    resolution: |
+      Added interactive green BUY button to Scan Tab table in app_option_Trade.py (Port 5050) and app_Sock_Trade.py (Port 5051), backed by /api/buy-scanned-trade API endpoint with dynamic exchange resolution and automatic BOUGHT status protection against double-buying.
+    status: RESOLVED
+
+  - id: FEATURE-010
+    title: Dual Monitoring Split (09:15 AM Target Exit vs 09:45 AM SL Failsafe)
+    severity: ENHANCEMENT
+    category: Risk Management & Strategy Execution
+    date_reported: "2026-08-01"
+    symptom: |
+      Single monitoring loop evaluated both SL and Target simultaneously during volatile 09:15-09:45 AM opening window, risking premature SL shakeouts.
+    root_cause: |
+      Need to separate Target monitoring (active from 09:15 AM open) from SL monitoring (deferred to 09:45 AM+ with 3-way confirmation).
+    affected_files:
+      - common/trading_core.py
+    resolution: |
+      Updated monitor_active_positions in common/trading_core.py: Target monitoring remains active from 09:15 AM. SL monitoring skips 09:15-09:45 AM window, evaluates a 3-way failsafe check at 09:45 AM (LTP < SL & prev candle closed < SL & current candle trading < SL), then resumes continuous SL monitoring after 09:45 AM.
+    status: RESOLVED
+
+  - id: FEATURE-011
+    title: Non-Intrusive Scan Export Spot Trend & Target Annotator Utility
+    severity: ENHANCEMENT
+    category: Data Export & Analysis
+    date_reported: "2026-08-01"
+    symptom: |
+      Scan exports lacked underlying spot stock trend and spot T1 target metrics.
+    root_cause: |
+      Need a separate, non-intrusive post-processing utility to enrich scan export CSV files without modifying core engines.
+    affected_files:
+      - common/spot_enricher.py
+    resolution: |
+      Created common/spot_enricher.py utility module. It reads exported scan CSVs, extracts underlying symbols, evaluates spot trend (BULL/BEAR) and spot T1 target using Negation Theory, and appends Spot_Trend and Spot_T1_Target columns to an enriched CSV output file.
+    status: RESOLVED
+
+  - id: FEATURE-012
+    title: Oracle Cloud Free Tier Step-by-Step Deployment Blueprint
+    severity: ENHANCEMENT
+    category: Cloud Infrastructure & Deployment
+    date_reported: "2026-08-03"
+    symptom: |
+      Need a permanent, comprehensive offline deployment guide for Oracle Cloud Free Tier.
+    root_cause: |
+      Cloud account creation postponed; deployment instructions needed as persistent project documentation.
+    affected_files:
+      - CLOUD_DEPLOYMENT_GUIDE.md
+      - Notes_Inputs.txt
+    resolution: |
+      Authored CLOUD_DEPLOYMENT_GUIDE.md with complete 5-phase step-by-step instructions for instance provisioning, OS firewall rules, python venv setup, systemd auto-start services (options 5050, stock 5051, export daemon), and service logging.
+    status: RESOLVED
+
+  - id: ISSUE-013
+    title: Stock Dashboard JS SyntaxError & Uncaught ReferenceError toggleProgram is not defined
+    severity: HIGH
+    category: Dashboard UX & Syntax Error
+    date_reported: "2026-08-03"
+    symptom: |
+      Browser thrown "Uncaught SyntaxError: Unexpected end of input" and "Uncaught ReferenceError: toggleProgram is not defined" when loading Stock Dashboard on Port 5051.
+    root_cause: |
+      Missing closing brace '}' for function buyScannedTrade at line 851 in Trade_Stock/app_Sock_Trade.py, causing script block parsing to fail at end of file.
+    affected_files:
+      - Trade_Stock/app_Sock_Trade.py
+    resolution: |
+      Added missing closing brace to terminate buyScannedTrade function block. Validated JS syntax with Node.js parser (100% clean).
+    status: RESOLVED
+
+  - id: ISSUE-014
+    title: Bearish Scanner UnboundLocalError sl_val referenced before assignment
+    severity: HIGH
+    category: Scanner & Scope Error
+    date_reported: "2026-08-03"
+    symptom: |
+      bear_trade (Stock Bearish Reversal Scanner on Port 5051) failed with "cannot access local variable 'sl_val' where it is not associated with a value".
+    root_cause: |
+      In scan_anchor_bcd_breakout_bearish (common/trading_core.py), line 2794 evaluated float(intermediate_bars['close'].max()) > sl_val prior to assigning sl_val at line 2800.
+    affected_files:
+      - common/trading_core.py
+    resolution: |
+      Defined sl_val prior to intermediate_bars check in scan_anchor_bcd_breakout_bearish. Verified code compilation with py_compile (100% clean).
+    status: RESOLVED
+
+  - id: ISSUE-015
+    title: Zerodha API 200-Day Intraday Query Limit & Missing Registry Tokens (LTIM & TATAMOTORS)
+    severity: HIGH
+    category: Scanner & API Rate Limit
+    date_reported: "2026-08-03"
+    symptom: |
+      Selecting intraday timeframes (1hr / 75min) caused the scanner to finish instantly (1 second) with "interval exceeds max limit: 200 days" errors for all stocks, and LTIM / TATAMOTORS showed NO_TOKEN.
+    root_cause: |
+      1. get_adaptive_lookback allowed user_lookback=2000 to pass directly to Zerodha API for intraday timeframes (1hr/75m), exceeding Zerodha's 200-day max query window for intraday candles.
+      2. STOCK_REGISTRY was missing LTIM and TATAMOTORS token mappings.
+    affected_files:
+      - common/trading_core.py
+    resolution: |
+      1. Updated get_adaptive_lookback to automatically cap intraday lookback at 180 days (complying with Zerodha API limits).
+      2. Added LTIM and TATAMOTORS tokens to STOCK_REGISTRY.
+    status: RESOLVED
+
+  - id: ISSUE-016
+    title: Scanner KeyError Close & TypeError NoneType Formatting Fix
+    severity: MEDIUM
+    category: Data Normalization & Formatting
+    date_reported: "2026-08-03"
+    symptom: |
+      Scanners threw KeyError 'Close' when evaluating TREND_CONT_BEAR setups, and print_summary threw TypeError unsupported format string passed to NoneType when formatting N/A targets (T2=None).
+    root_cause: |
+      1. TREND_CONT_BEAR patterns returned key 'Entry' instead of 'Close'.
+      2. print_summary attempted direct float formatting on NoneType targets ({m['T2']:<10.2f}).
+    affected_files:
+      - Trade_Stock/stock_bearish_reversal_scanner.py
+      - Trade_Stock/stock_bullish_reversal_scanner.py
+    resolution: |
+      1. Normalized result['Close'] = result.get('Close') or result.get('Entry').
+      2. Applied safe type checking for T1/T2 target formatting in print_summary.
+    status: RESOLVED
+
+  - id: FEATURE-017
+    title: TradingView Open-Source Edition Clone (Zero API Key / Credentials Required)
+    severity: ENHANCEMENT
+    category: Architecture & Open Source Integration
+    date_reported: "2026-08-04"
+    symptom: |
+      Sharing strategy software required third-party users to possess Zerodha Kite API keys & daily access tokens.
+    root_cause: |
+      Strategy engines were tightly coupled with Zerodha KiteConnect API for historical candle data and broker order execution.
+    affected_files:
+      - common/trading_core.py
+      - common/equity_universe.py
+      - Trade_Stock/app_Sock_Trade.py
+      - Trade_Option/app_option_Trade.py
+      - MASTER_DOCUMENTATION.yaml
+    resolution: |
+      1. Cloned entire repository to Price_Action_TradingView workspace.
+      2. Integrated Yahoo Finance (yfinance / HTTP fallback) data fetcher in fetch_and_resample_candles and load_kite_session, enabling 100% free, credential-less market scanning across Nifty 50 stocks & indices.
+      3. Integrated interactive TradingView Advanced Real-Time Chart widget & clickable chart links in app_Sock_Trade.py and app_option_Trade.py.
+      4. Hidden broker-dependent active position monitoring & 1-click execution features for clean open-source sharing.
+    status: RESOLVED
+
+
+
+
+
+
+
