@@ -31,11 +31,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SCAN_DISPLAY_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_display_data.json")
 JOURNAL_FILE = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
 
+LOG_FILE_PATH = os.path.join(BASE_DIR, "output", "logs", "bull_bear_daily_scanner.log")
+os.makedirs(os.path.dirname(LOG_FILE_PATH), exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("output/logs/bull_bear_daily_scanner.log", mode="a", encoding="utf-8"),
+        logging.FileHandler(LOG_FILE_PATH, mode="a", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )

@@ -292,14 +292,35 @@ def load_journal():
             pass
     return rows[-200:]
 
+def get_best_log_file(filepath):
+    if not filepath:
+        return ""
+    root_dir = os.path.dirname(BASE_DIR)
+    candidates = [
+        filepath,
+        os.path.join(BASE_DIR, filepath),
+        os.path.join(root_dir, filepath),
+        os.path.join(root_dir, "output", "logs", os.path.basename(filepath)),
+        os.path.join(BASE_DIR, "output", "logs", os.path.basename(filepath)),
+    ]
+    existing = []
+    for c in candidates:
+        if os.path.exists(c):
+            existing.append((os.path.getmtime(c), c))
+    if existing:
+        existing.sort(key=lambda x: x[0], reverse=True)
+        return existing[0][1]
+    return filepath
+
 def tail_log(filepath, n=200):
-    if not os.path.exists(filepath):
+    best_file = get_best_log_file(filepath)
+    if not best_file or not os.path.exists(best_file):
         return []
     try:
-        with open(filepath, encoding="utf-8") as f:
+        with open(best_file, encoding="utf-8") as f:
             lines = f.readlines()
         return lines[-n:]
-    except:
+    except Exception:
         return []
 
 def compute_stats(positions, journal):
