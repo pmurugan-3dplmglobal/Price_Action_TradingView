@@ -995,17 +995,34 @@ def resolve_token_or_symbol_to_name(token_or_sym):
 
 def fetch_open_source_candles(token_or_sym, timeframe_str, from_date=None, to_date=None):
     sym = resolve_token_or_symbol_to_name(token_or_sym)
+    clean_sym = sym.strip().upper()
+
+    if clean_sym.isdigit():
+        return pd.DataFrame()
+
     symbol_map = {
         "NIFTY": "^NSEI",
         "NIFTY 50": "^NSEI",
+        "NIFTY50": "^NSEI",
         "BANKNIFTY": "^NSEBANK",
         "NIFTY BANK": "^NSEBANK",
         "SENSEX": "^BSESN",
         "BSE SENSEX": "^BSESN"
     }
-    
-    clean_sym = sym.strip().upper()
-    ticker = symbol_map.get(clean_sym, clean_sym if clean_sym.startswith('^') or '.NS' in clean_sym or '.BO' in clean_sym else f"{clean_sym}.NS")
+
+    if clean_sym in symbol_map:
+        ticker = symbol_map[clean_sym]
+    elif "NIFTY" in clean_sym and not clean_sym.startswith('^'):
+        ticker = "^NSEBANK" if "BANK" in clean_sym else "^NSEI"
+    elif "SENSEX" in clean_sym and not clean_sym.startswith('^'):
+        ticker = "^BSESN"
+    elif clean_sym.startswith('^') or '.NS' in clean_sym or '.BO' in clean_sym:
+        ticker = clean_sym
+    else:
+        import re
+        base = re.sub(r'\d+.*', '', clean_sym)
+        base = base if base else clean_sym
+        ticker = f"{base}.NS"
     
     tf_clean = str(timeframe_str).lower()
     if tf_clean in ['day', '1d', 'd', 'week', '1w', 'w']:
