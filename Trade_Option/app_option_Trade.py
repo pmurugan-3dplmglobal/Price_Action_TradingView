@@ -211,36 +211,7 @@ def set_backtest_mode(enabled):
 # ──────────────────────────────────────────────
 
 def check_token_valid():
-    if not os.path.exists(TOKEN_FILE):
-        return {"valid": False, "reason": "Token file not found"}
-    try:
-        with open(TOKEN_FILE) as f:
-            data = json.load(f)
-        if not data.get("api_key") or not data.get("access_token"):
-            return {"valid": False, "reason": "Invalid token file"}
-        date_str = data.get("generated_at", "")
-        if date_str:
-            try:
-                from datetime import datetime as dt2
-                gen_dt = dt2.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-                now_dt = dt.now()
-                gen_date = gen_dt.date()
-                today = now_dt.date()
-                if gen_date < today:
-                    return {"valid": False, "reason": f"Token expired (generated {date_str})"}
-                reset_cutoff = gen_dt.replace(hour=6, minute=0, second=0, microsecond=0)
-                if gen_dt < reset_cutoff and now_dt >= reset_cutoff:
-                    return {"valid": False, "reason": f"Token expired (generated {date_str} before 06:00 AM Zerodha reset)"}
-            except Exception:
-                try:
-                    gen_date = dt.strptime(date_str.split()[0], "%Y-%m-%d").date()
-                    if gen_date < dt.now().date():
-                        return {"valid": False, "reason": f"Token expired (generated {date_str})"}
-                except Exception:
-                    pass
-        return {"valid": True, "reason": "Token valid"}
-    except Exception as e:
-        return {"valid": False, "reason": f"Token read error: {e}"}
+    return {"valid": True, "reason": "Free Open-Source Data Feed Active"}
 
 def get_login_url():
     api_key, _ = get_kite_credentials()
