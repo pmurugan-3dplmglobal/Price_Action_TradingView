@@ -1815,16 +1815,17 @@ def derive_sl_targets_for_symbol(kite, symbol, entry_price, registry, timeframe_
 def reconcile_positions(kite, registry, positions_dict, lock, engine, timeframe_entry, timeframe_anchor, lookback_days, resolve_fn, save_state_fn=None):
     """Cross-reference ACTIVE_POSITIONS against Kite open positions and DB."""
     today = dt.now().strftime("%Y-%m-%d")
-    kite_symbols = set()
-    try:
-        kite_pos = kite.positions()
-        for plist in [kite_pos.get("day", []), kite_pos.get("net", [])]:
-            for p in plist:
-                sym = next((s for s in registry if s in p.get("tradingsymbol", "")), None)
-                if sym and abs(int(p.get("quantity", 0))) > 0:
-                    kite_symbols.add(sym)
-    except Exception as e:
-        logging.warning(f"Kite position fetch for reconciliation failed: {e}")
+    acc_token = getattr(kite, "access_token", "") if kite else ""
+    if kite and acc_token and acc_token != "open_source_token":
+        try:
+            kite_pos = kite.positions()
+            for plist in [kite_pos.get("day", []), kite_pos.get("net", [])]:
+                for p in plist:
+                    sym = next((s for s in registry if s in p.get("tradingsymbol", "")), None)
+                    if sym and abs(int(p.get("quantity", 0))) > 0:
+                        kite_symbols.add(sym)
+        except Exception as e:
+            logging.warning(f"Kite position fetch for reconciliation failed: {e}")
     import trade_db
     db_active = {t["symbol"] for t in trade_db.get_active_trades(engine) if t.get("symbol") in registry}
     with lock:
