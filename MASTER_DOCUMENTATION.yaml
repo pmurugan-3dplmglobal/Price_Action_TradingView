@@ -15,11 +15,11 @@ meta:
 
 architecture:
   diagram: |
-    Browser (localhost:5050 / localhost:5051)
-      ├── Trade_Option Dashboard (app_option_Trade.py: 5050)
+    Browser (localhost:6060 / localhost:6061)
+      ├── Trade_Option Dashboard (app_option_Trade.py: 6060)
       │     ├── Index Options Engine (index_options_trade_engine.py)
       │     └── Stock Options Engine (stock_options_trade_engine.py)
-      └── Trade_Stock Dashboard (app_Sock_Trade.py: 5051)
+      └── Trade_Stock Dashboard (app_Sock_Trade.py: 6061)
             ├── Stock Bull Reversal (stock_bullish_reversal_scanner.py)
             └── Stock Bear Reversal (stock_bearish_reversal_scanner.py)
                   │

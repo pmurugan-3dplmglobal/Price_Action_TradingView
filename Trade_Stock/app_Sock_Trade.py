@@ -56,7 +56,7 @@ SCAN_DISPLAY_INDEX_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_disp
 LIVE_EXECUTION_FLAG = os.path.join(BASE_DIR, "input", "nifty50_live.flag")
 LIVE_EXECUTION_FLAG_INDEX = os.path.join(BASE_DIR, "input", "index_live.flag")
 
-DASHBOARD_PORT = 5051
+DASHBOARD_PORT = 6061
 REFRESH_SECONDS = 1
 ACTIVE_EDIT_LOCKS = set()
 
@@ -1897,7 +1897,7 @@ HTML_TEMPLATE = """
             <span style="background:#238636;color:#ffffff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;">● Free Data Feed Active</span>
             <span style="font-size:12px;color:#c9d1d9;">TradingView & Yahoo Finance Open-Source Edition <span style="color:#8b949e;">(Zero API Key / Credentials Required)</span></span>
         </div>
-        <span style="font-size:11px;color:#8b949e;font-weight:600;">Port: 5051</span>
+        <span style="font-size:11px;color:#8b949e;font-weight:600;">Port: 6061</span>
     </div>
 
     <div class="stats-grid">

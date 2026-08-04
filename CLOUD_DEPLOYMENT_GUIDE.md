@@ -6,8 +6,8 @@ This document provides a comprehensive, step-by-step guide to deploying the Pric
 ---
 
 ## Overview of Components To Deploy
-1. **Options Dashboard**: `Trade_Option/app_option_Trade.py` (Port `5050`)
-2. **Stock Dashboard**: `Trade_Stock/app_Sock_Trade.py` (Port `5051`)
+1. **Options Dashboard**: `Trade_Option/app_option_Trade.py` (Port `6060`)
+2. **Stock Dashboard**: `Trade_Stock/app_Sock_Trade.py` (Port `6061`)
 3. **Automated Export Scheduler Daemon**: `Trade_Option/run_export_scheduler_daemon.py` (Runs at 10:30 AM, 1:00 PM, 3:15 PM)
 
 ---
