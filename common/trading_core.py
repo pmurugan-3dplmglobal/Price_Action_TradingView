@@ -1815,6 +1815,7 @@ def derive_sl_targets_for_symbol(kite, symbol, entry_price, registry, timeframe_
 def reconcile_positions(kite, registry, positions_dict, lock, engine, timeframe_entry, timeframe_anchor, lookback_days, resolve_fn, save_state_fn=None):
     """Cross-reference ACTIVE_POSITIONS against Kite open positions and DB."""
     today = dt.now().strftime("%Y-%m-%d")
+    kite_symbols = set()
     acc_token = getattr(kite, "access_token", "") if kite else ""
     if kite and acc_token and acc_token != "open_source_token":
         try:
