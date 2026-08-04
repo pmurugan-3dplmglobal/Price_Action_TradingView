@@ -1588,28 +1588,8 @@ HTML_TEMPLATE = """
         }
 
         async function refreshTokenStatus() {
-            try {
-                const r = await fetch('/api/token/check');
-                const tk = await r.json();
-                const banner = document.getElementById('token-banner');
-                const text = document.getElementById('token-banner-text');
-                const btn = document.getElementById('token-gen-btn');
-                const panel = document.getElementById('token-panel');
-                if (tk.valid) {
-                    banner.className = 'token-banner token-valid';
-                    text.innerHTML = '<strong>Token:</strong> Valid';
-                    btn.style.display = 'none';
-                    if (panel) panel.style.display = 'none';
-                } else if (tk.reason && tk.reason.includes('expired')) {
-                    banner.className = 'token-banner token-expired';
-                    text.innerHTML = '<strong>Token:</strong> Expired <span style="font-weight:normal;font-size:11px;color:#8b949e;">(' + tk.reason + ')</span>';
-                    btn.style.display = 'inline-block';
-                } else {
-                    banner.className = 'token-banner token-missing';
-                    text.innerHTML = '<strong>Token:</strong> ' + (tk.reason || 'Missing');
-                    btn.style.display = 'inline-block';
-                }
-            } catch(e) { console.log('Token check error:', e); }
+            // TradingView Open-Source Edition - Free data feed active
+            return;
         }
 
         async function refreshBacktestMode() {
@@ -1923,31 +1903,12 @@ HTML_TEMPLATE = """
     <div class="toast-container" id="toast-container"></div>
     <h1>Trading Control Center <small>Steering & Dashboard</small></h1>
 
-    <div id="token-banner" class="token-banner token-hidden">
-        <div class="token-banner-row">
-            <span id="token-banner-text"></span>
-            <button id="token-gen-btn" class="token-gen-btn" onclick="showTokenPanel()" style="display:none">Generate Token</button>
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <span style="background:#238636;color:#ffffff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;">● Free Data Feed Active</span>
+            <span style="font-size:12px;color:#c9d1d9;">TradingView & Yahoo Finance Open-Source Edition <span style="color:#8b949e;">(Zero API Key / Credentials Required)</span></span>
         </div>
-        <div id="token-panel" class="token-panel" style="display:none">
-            <div class="token-step">
-                <span class="token-step-num">1</span>
-                <span>Open this URL and log in to Kite:</span>
-            </div>
-            <div class="token-url-box" id="token-url-box" onclick="copyTokenUrl()">
-                <span id="token-url-text">Loading...</span>
-                <span class="token-copy-hint">Click to copy</span>
-            </div>
-            <div class="token-step">
-                <span class="token-step-num">2</span>
-                <span>After login, paste the full redirect URL here:</span>
-            </div>
-            <div class="token-input-row">
-                <input type="text" id="token-redirect-input" class="token-input" placeholder="https://... or ?request_token=...">
-                <button class="token-submit-btn" onclick="submitToken()">Submit & Save</button>
-            </div>
-            <div id="token-feedback" class="token-feedback"></div>
-            <button class="token-close-btn" onclick="hideTokenPanel()">Cancel</button>
-        </div>
+        <span style="font-size:11px;color:#8b949e;font-weight:600;">Port: 5051</span>
     </div>
 
     <div class="stats-grid">
