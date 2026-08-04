@@ -1251,6 +1251,14 @@ def close_position(kite, pos, live_market=True, product=None):
     if not contract:
         return
     
+    qty = pos.get("quantity") or (get_option_lot_size(contract) or pos.get("lot_size", 1)) * pos.get("position_size", 1)
+    acc_token = getattr(kite, "access_token", "") if kite else ""
+
+    if not live_market or not acc_token or acc_token == "open_source_token":
+        save_executed_exit(contract, "SIMULATED_EXIT_OPEN_SOURCE", {"type": "OPEN_SOURCE_SIMULATED", "qty": qty})
+        logging.info(f"Open-Source Edition Paper Trade Exit SUCCESS for {contract} (Quantity: {qty})")
+        return
+
     target_product = product
     try:
         if not target_product:
@@ -1262,7 +1270,7 @@ def close_position(kite, pos, live_market=True, product=None):
     except Exception as e:
         logging.warning(f"Could not fetch Kite position product for {contract}: {e}")
     if not target_product:
-        target_product = pos.get("product") or kite.PRODUCT_NRML
+        target_product = pos.get("product") or getattr(kite, "PRODUCT_NRML", "NRML")
 
     c_str = str(contract).upper()
     if "SENSEX" in c_str or "BSE" in c_str:
@@ -1271,8 +1279,6 @@ def close_position(kite, pos, live_market=True, product=None):
         target_exch = "NFO"
     else:
         target_exch = "NSE"
-
-    qty = pos.get("quantity") or (get_option_lot_size(contract) or pos.get("lot_size", 1)) * pos.get("position_size", 1)
 
     if is_contract_exit_executed(contract):
         prev = EXECUTED_EXITS.get(contract, {})

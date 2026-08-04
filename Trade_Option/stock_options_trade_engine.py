@@ -369,30 +369,37 @@ def execute_highest_rr_trade(kite, staged):
             ACTIVE_POSITIONS[sym] = pos
         save_state()
     avg_rr = round(_avg_target_rank(best), 2)
+    acc_token = getattr(kite, "access_token", "") if kite else ""
     if live_ok:
-        try:
-            q = kite.quote(f"{kite.EXCHANGE_NFO}:{contract}")
-            ltp = q[f"{kite.EXCHANGE_NFO}:{contract}"]["last_price"]
-            ask = q[f"{kite.EXCHANGE_NFO}:{contract}"]["depth"]["sell"][0]["price"]
-            price = round((ask if ask > 0 else ltp) * 1.005, 1)
+        if acc_token and acc_token != "open_source_token":
+            try:
+                q = kite.quote(f"{kite.EXCHANGE_NFO}:{contract}")
+                ltp = q[f"{kite.EXCHANGE_NFO}:{contract}"]["last_price"]
+                ask = q[f"{kite.EXCHANGE_NFO}:{contract}"]["depth"]["sell"][0]["price"]
+                price = round((ask if ask > 0 else ltp) * 1.005, 1)
+                qty = best["lot_size"] * pos_size
+                oid = kite.place_order(
+                    variety=kite.VARIETY_REGULAR, tradingsymbol=contract,
+                    exchange=kite.EXCHANGE_NFO, transaction_type=kite.TRANSACTION_TYPE_BUY,
+                    quantity=qty, order_type=kite.ORDER_TYPE_LIMIT, price=price,
+                    product=kite.PRODUCT_NRML
+                )
+                log_to_journal(sym, best["pattern"], TIMEFRAME_ENTRY, "BUY", "SUCCESS",
+                               f"Order: {oid}, Qty: {qty}, {opt_type}@{target_strike}", entry=cp, sl=best["current_sl"], target=best["t1"], rr=avg_rr,
+                               event_time=best.get("entry_time"))
+            except Exception as e:
+                log_to_journal(sym, best["pattern"], TIMEFRAME_ENTRY, "BUY", "FAILED", str(e),
+                               entry=cp, sl=best["current_sl"], target=best["t1"],
+                               event_time=best.get("entry_time"))
+                with position_lock:
+                    ACTIVE_POSITIONS.pop(sym, None)
+                save_state()
+                return
+        else:
             qty = best["lot_size"] * pos_size
-            oid = kite.place_order(
-                variety=kite.VARIETY_REGULAR, tradingsymbol=contract,
-                exchange=kite.EXCHANGE_NFO, transaction_type=kite.TRANSACTION_TYPE_BUY,
-                quantity=qty, order_type=kite.ORDER_TYPE_LIMIT, price=price,
-                product=kite.PRODUCT_NRML
-            )
             log_to_journal(sym, best["pattern"], TIMEFRAME_ENTRY, "BUY", "SUCCESS",
-                           f"Order: {oid}, Qty: {qty}, {opt_type}@{target_strike}", entry=cp, sl=best["current_sl"], target=best["t1"], rr=avg_rr,
+                           f"Paper Order: SIM_{dt.now().strftime('%H%M%S')}, Qty: {qty}, {opt_type}@{target_strike}", entry=cp, sl=best["current_sl"], target=best["t1"], rr=avg_rr,
                            event_time=best.get("entry_time"))
-        except Exception as e:
-            log_to_journal(sym, best["pattern"], TIMEFRAME_ENTRY, "BUY", "FAILED", str(e),
-                           entry=cp, sl=best["current_sl"], target=best["t1"],
-                           event_time=best.get("entry_time"))
-            with position_lock:
-                ACTIVE_POSITIONS.pop(sym, None)
-            save_state()
-            return
     elif BACKTEST_DATE is not None:
         log_to_journal(sym, best["pattern"], TIMEFRAME_ENTRY, "BACKTEST_BEST", "SUCCESS",
                        f"Contract: {contract}, Size: {pos_size}, {opt_type}@{target_strike}", entry=cp, sl=best["current_sl"], target=best["t1"],

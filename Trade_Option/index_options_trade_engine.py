@@ -211,8 +211,9 @@ def run_anchor_scan(kite):
 
 
 def execute_index_entry(kite, pos):
-    if not LIVE_MARKET_DEPLOYMENT:
-        logging.info(f"[BACKTEST ENTRY] {pos['contract']} ({pos['side']})")
+    acc_token = getattr(kite, "access_token", "") if kite else ""
+    if not LIVE_MARKET_DEPLOYMENT or not acc_token or acc_token == "open_source_token":
+        logging.info(f"[OPEN-SOURCE PAPER TRADE ENTRY] {pos['contract']} ({pos['side']})")
         return True
     try:
         c_str = str(pos['contract']).upper()
