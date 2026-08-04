@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import requests
 import yfinance as yf
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 
 # ──────────────────────────────────────────────
 #  CONSTANTS & REGISTRIES
@@ -1007,7 +1008,9 @@ def fetch_open_source_candles(token_or_sym, timeframe_str, from_date=None, to_da
         "BANKNIFTY": "^NSEBANK",
         "NIFTY BANK": "^NSEBANK",
         "SENSEX": "^BSESN",
-        "BSE SENSEX": "^BSESN"
+        "BSE SENSEX": "^BSESN",
+        "LTIM": "LTM.NS",
+        "TATAMOTORS": "TMPV.NS"
     }
 
     if clean_sym in symbol_map:
