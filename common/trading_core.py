@@ -306,6 +306,10 @@ def log_to_journal(symbol, pattern, timeframe, action, status, details="", pnl_p
     ]
     def _write():
         try:
+            p_dir = os.path.dirname(os.path.abspath(journal_file))
+            if p_dir:
+                os.makedirs(p_dir, exist_ok=True)
+            file_exists = os.path.exists(journal_file)
             with open(journal_file, mode="a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f, delimiter="\t")
                 if not file_exists:
