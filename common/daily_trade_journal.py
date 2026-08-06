@@ -129,7 +129,10 @@ def resolve_trade_pattern(symbol, contract="", default_pat=None, is_manual=False
 
     # 3. Search trades_db.json
     try:
-        from common.trade_db import get_all_trades
+        try:
+            from common.trade_db import get_all_trades
+        except ImportError:
+            from trade_db import get_all_trades
         for t in get_all_trades():
             t_sym = str(t.get("symbol") or "").replace(" ", "").upper()
             t_cnt = str(t.get("contract") or "").replace(" ", "").upper()
@@ -287,16 +290,21 @@ def generate_daily_journal(target_date=None, kite=None):
                     if existing_user_notes[sym].get("remarks"): rem = existing_user_notes[sym]["remarks"]
                     if existing_user_notes[sym].get("lesson"): les = existing_user_notes[sym]["lesson"]
                 
-                sl_t_levels = {}
                 try:
-                    from common.trading_core import lookup_scan_sl_target
+                    try:
+                        from common.trading_core import lookup_scan_sl_target
+                    except ImportError:
+                        from trading_core import lookup_scan_sl_target
                     sl_t_levels = lookup_scan_sl_target(sym, sym, engine_type, kite, buy_avg or sell_avg) or {}
                 except Exception:
                     pass
 
                 if not sl_t_levels.get("current_sl"):
                     try:
-                        from common.trade_db import get_all_trades
+                        try:
+                            from common.trade_db import get_all_trades
+                        except ImportError:
+                            from trade_db import get_all_trades
                         for t in get_all_trades():
                             t_sym = str(t.get("symbol") or t.get("contract") or "").replace(" ", "").upper()
                             clean_sym = str(sym).replace(" ", "").upper()
@@ -339,7 +347,10 @@ def generate_daily_journal(target_date=None, kite=None):
 
     # 2. Sync remaining trades from trade_db
     try:
-        from common.trade_db import get_all_trades
+        try:
+            from common.trade_db import get_all_trades
+        except ImportError:
+            from trade_db import get_all_trades
         trades = get_all_trades()
         for t in trades:
             c_date = (t.get("created_at") or t.get("entry_time") or "")[:10]
