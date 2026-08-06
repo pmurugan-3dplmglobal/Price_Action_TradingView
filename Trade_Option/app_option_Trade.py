@@ -1660,6 +1660,7 @@ HTML_TEMPLATE = """
                     if (sw) { sw.classList.toggle('on', !!enabled); }
                     if (lb) { lb.textContent = enabled ? 'LIVE' : 'SCAN'; lb.style.color = enabled ? '#3fb950' : '#8b949e'; }
                 }
+                renderScanTab();
                 renderReport();
                 refreshTokenStatus();
                 refreshBacktestMode();
