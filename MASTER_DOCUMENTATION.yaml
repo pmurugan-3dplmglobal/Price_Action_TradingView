@@ -45,14 +45,12 @@ architecture:
       stock_bullish_reversal_scanner.py: "Stock Bullish Reversal Scanner & Exporter"
       stock_bearish_reversal_scanner.py: "Stock Bearish Reversal Scanner & Exporter"
     backtest:
-      run_official_option_strike_backtest.py: "Official Multi-day Option Strike & Spot Backtest Runner"
-      run_kite_master_backtest.py: "Kite Connect API Historical Multi-day Backtest Suite"
-      run_master_backtest.py: "Yahoo Finance / Historical Data Master Backtest Engine"
+      run_master_backtest.py: "Yahoo Finance / Generic Open-Source Master Backtest Engine (Zero API Keys Required)"
       backtest_simulation.py: "Parallelized Stock Options & Spot Simulation Engine"
       master_backtest_results.json: "JSON Export of latest master backtest run results"
       test_fetch.py: "Quick Yahoo Finance API candle fetch test script"
-      test_option_strike_fetch.py: "Zerodha NFO Option Strike token & candle fetch test script"
-      test_spot_scan.py: "Spot & Option pattern scanner verification test script"
+      run_official_option_strike_backtest.py: "Official Multi-day Option Strike & Spot Backtest Runner (Kite API optional)"
+      run_kite_master_backtest.py: "Kite Connect API Historical Multi-day Backtest Suite (Kite API optional)"
 
 config_precedence:
   priority_1: "Manual UI User Edits (overrides in sl_target_overrides.json & active_positions_db.json)"
@@ -114,17 +112,15 @@ engines:
 backtest_suite:
   directory: "backtest/"
   runners:
-    official_strike_runner: "backtest/run_official_option_strike_backtest.py"
-    kite_historical_runner: "backtest/run_kite_master_backtest.py"
-    master_runner: "backtest/run_master_backtest.py"
+    master_runner: "backtest/run_master_backtest.py (Generic Open-Source / Yahoo Finance Data)"
     simulation_engine: "backtest/backtest_simulation.py"
+    kite_historical_runner: "backtest/run_kite_master_backtest.py (Optional Kite API)"
+    official_strike_runner: "backtest/run_official_option_strike_backtest.py (Optional Kite API)"
   output:
     results_json: "backtest/master_backtest_results.json"
     exports_csv: "Trade_Option/output/exports/"
   tests:
-    - "backtest/test_fetch.py"
-    - "backtest/test_option_strike_fetch.py"
-    - "backtest/test_spot_scan.py"
+    - "backtest/test_fetch.py (Yahoo Finance Data Fetch Test)"
 
   strategy_rules:
     core_architectural_thumb_rule:

@@ -293,6 +293,28 @@ issues:
       4. Hidden broker-dependent active position monitoring & 1-click execution features for clean open-source sharing.
     status: RESOLVED
 
+  - id: FEATURE-018
+    title: Generic Open-Source Data Repository Audit & Unwanted File Cleanup
+    severity: ENHANCEMENT
+    category: Cleanup & Documentation
+    date_reported: "2026-08-06"
+    symptom: |
+      Repository contained temporary debug scratch scripts and Zerodha-only test scripts that were incompatible with zero-credential open-source execution.
+    root_cause: |
+      Legacy test files required active Zerodha Kite API access tokens, failing in generic open-source mode.
+    affected_files:
+      - scratch/ (removed)
+      - backtest/test_spot_scan.py (removed)
+      - backtest/test_option_strike_fetch.py (removed)
+      - MASTER_DOCUMENTATION.yaml
+      - Notes_Inputs.txt
+    resolution: |
+      1. Audited repository and preserved 100% of core strategy engines, scanners, trade DB, and web dashboards.
+      2. Removed single-use scratch scripts and Zerodha-dependent test scripts.
+      3. Validated generic Yahoo Finance backtester (run_master_backtest.py) and test_fetch.py.
+      4. Updated MASTER_DOCUMENTATION.yaml and Notes_Inputs.txt to document the zero-credential generic pipeline.
+    status: RESOLVED
+
 
 
 

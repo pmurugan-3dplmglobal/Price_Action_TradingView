@@ -28,4 +28,10 @@ Scan Export Spot Trend & Target Annotator (Separate Utility)
       4. Saves an enriched version of the CSV (e.g., scan_export_enriched_DD_MM_YY.csv).
 
 Feature:3  : Documented / Ready for Deployment
-Detailed step-by-step Oracle Cloud Free Tier deployment guide created in CLOUD_DEPLOYMENT_GUIDE.md.
+Detailed step-by-step Oracle Cloud Free Tier deployment guide created in CLOUD_DEPLOYMENT_GUIDE.md.
+
+Feature:4  : Completed
+Generic Open-Source Data Audit & Repository Cleanup:
+- Removed temporary scratch debug scripts and Zerodha-only API test scripts (`test_spot_scan.py`, `test_option_strike_fetch.py`).
+- Preserved all core strategy, scanners, trade DB, web dashboards, and open-source Yahoo Finance backtester (`run_master_backtest.py`, `test_fetch.py`).
+- Updated MASTER_DOCUMENTATION.yaml to document zero-credential generic open-source pipeline.
