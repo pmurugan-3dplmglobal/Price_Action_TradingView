@@ -404,8 +404,12 @@ def refresh_data():
                         if os.path.exists(f):
                             with open(f, "r") as fh:
                                 existing = json.load(fh)
-                            if existing.get("date") == today_str and existing.get("staged_trades"):
-                                continue  # Keep today's existing scan display data intact
+                            if existing.get("staged_trades"):
+                                existing["date"] = today_str
+                                existing["timestamp"] = now_ist.strftime("%Y-%m-%d %H:%M:%S")
+                                with open(f, "w") as fh:
+                                    json.dump(existing, fh, indent=2)
+                                continue  # Keep existing scan display data intact
                         empty_scan = {"date": today_str, "timestamp": now_ist.strftime("%Y-%m-%d %H:%M:%S"), "staged_trades": [], "carry_forward": [], "active_live": []}
                         with open(f, "w") as fh:
                             json.dump(empty_scan, fh)

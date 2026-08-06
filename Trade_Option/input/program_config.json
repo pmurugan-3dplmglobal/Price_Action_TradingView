@@ -9,8 +9,8 @@
   "failsafe_start_time": "09:45",
   "emergency_buffer_pct": 0.15,
   "index": {
-    "timeframe_entry": "5minute",
-    "timeframe_anchor": "5minute",
+    "timeframe_entry": "3minute",
+    "timeframe_anchor": "3minute",
     "lookback_days": 30,
     "scan_interval": 15,
     "risk_percent": 1,
