@@ -315,9 +315,22 @@ issues:
       4. Updated MASTER_DOCUMENTATION.yaml and Notes_Inputs.txt to document the zero-credential generic pipeline.
     status: RESOLVED
 
-
-
-
-
-
-
+  - id: FEATURE-019
+    title: Legacy Broker Clutter Removal & Pure Open-Source Dashboard Refactoring
+    severity: ENHANCEMENT
+    category: Refactoring & Architecture
+    date_reported: "2026-08-06"
+    symptom: |
+      Dashboard application files (app_option_Trade.py & app_Sock_Trade.py) contained 150+ lines of unused Zerodha Kite broker token login routes, broker session polling loops, and Zerodha order placement code blocks.
+    root_cause: |
+      Legacy broker API functions were preserved from the original broker version, creating unnecessary clutter in the open-source edition.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+      - Notes_Inputs.txt
+    resolution: |
+      1. Refactored app_option_Trade.py and app_Sock_Trade.py to remove unused broker token login/exchange routes and Zerodha order placement calls.
+      2. Removed Zerodha _kite_session.positions() polling loops and streamlined active position tracking strictly around local JSON trade databases (trades_db.json).
+      3. Preserved 100% of price action strategy engines, 5 bullish reversal pattern functions, risk-reward metrics, Trade DB management, and TradingView chart widgets.
+    status: RESOLVED

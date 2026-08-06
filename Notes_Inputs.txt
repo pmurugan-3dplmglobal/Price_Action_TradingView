@@ -34,4 +34,9 @@ Feature:4  : Completed
 Generic Open-Source Data Audit & Repository Cleanup:
 - Removed temporary scratch debug scripts and Zerodha-only API test scripts (`test_spot_scan.py`, `test_option_strike_fetch.py`).
 - Preserved all core strategy, scanners, trade DB, web dashboards, and open-source Yahoo Finance backtester (`run_master_backtest.py`, `test_fetch.py`).
-- Updated MASTER_DOCUMENTATION.yaml to document zero-credential generic open-source pipeline.
+- Updated MASTER_DOCUMENTATION.yaml to document zero-credential generic open-source pipeline.
+
+Feature:5  : Completed
+Legacy Broker Clutter Removal & Dashboard Clean-Up:
+- Removed 150+ lines of unused Zerodha Kite broker token login routes, broker session polling loops, and Zerodha order placement code blocks.
+- Streamlined app_option_Trade.py and app_Sock_Trade.py to run on 100% open-source market data and local JSON trade databases.
