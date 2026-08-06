@@ -101,17 +101,33 @@ def get_adaptive_lookback(timeframe_str, asset_class="STOCK_SPOT", user_lookback
 
 def resample_timeframe(df, timeframe_str):
     """
-    Resample dataframe candles for custom non-native timeframes (e.g. 75min, 3h, 4h, week).
-    Native Kite TFs (3m, 5m, 10m, 15m, 30m, 60m, day) are returned as is.
+    Resample dataframe candles for custom timeframes.
+    Supports downsampling finer resolution (1m/5m) into 3m, 5m, 10m, 15m, 30m, 75m, etc.
     """
     if df is None or df.empty:
         return df
 
     tf_s = str(timeframe_str).lower()
+    rule = None
     origin = None
-    if tf_s in ["75min", "75mins", "75m", "75minute"]:
+    if tf_s in ["3min", "3minute", "3m"]:
+        rule = '3min'
+        origin = 'start_day'
+    elif tf_s in ["5min", "5minute", "5m"]:
+        rule = '5min'
+        origin = 'start_day'
+    elif tf_s in ["10min", "10minute", "10m"]:
+        rule = '10min'
+        origin = 'start_day'
+    elif tf_s in ["15min", "15minute", "15m"]:
+        rule = '15min'
+        origin = 'start_day'
+    elif tf_s in ["30min", "30minute", "30m"]:
+        rule = '30min'
+        origin = 'start_day'
+    elif tf_s in ["75min", "75mins", "75m", "75minute"]:
         rule = '75min'
-        origin = 'start'
+        origin = 'start_day'
     elif tf_s in ["3hr", "3h", "180min", "180minute"]:
         rule = '180min'
     elif tf_s in ["4hr", "4h", "4hour", "240min", "240minute"]:
@@ -1038,8 +1054,10 @@ def fetch_open_source_candles(token_or_sym, timeframe_str, from_date=None, to_da
         interval, period = '30m', '1mo'
     elif tf_clean in ['15min', '15minute']:
         interval, period = '15m', '1mo'
-    elif tf_clean in ['10min', '10minute', '5min', '5minute', '3min', '3minute', 'minute', '1min']:
+    elif tf_clean in ['10min', '10minute', '5min', '5minute']:
         interval, period = '5m', '1mo'
+    elif tf_clean in ['3min', '3minute', '3m', '2min', '2minute', '1min', '1minute', '1m', 'minute']:
+        interval, period = '1m', '7d'
     else:
         interval, period = '1d', '2y'
         
