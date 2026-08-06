@@ -1137,7 +1137,16 @@ HTML_TEMPLATE = """
             engines.forEach(eng => {
                 const data = sd[eng];
                 if (!data) return;
-                const staged = data.staged_trades || [];
+                const rawStaged = (data.staged_trades || []).concat(data.carry_forward || []);
+                const seenContracts = new Set();
+                const staged = [];
+                rawStaged.forEach(t => {
+                    const key = (t.contract || t.symbol || '').trim();
+                    if (key && !seenContracts.has(key)) {
+                        seenContracts.add(key);
+                        staged.push(t);
+                    }
+                });
                 const engLabel = eng === 'nifty50' ? 'Nifty 50' : 'Index';
                 if (staged.length) {
                     scanHtml += '<div class="scan-section-title">[' + engLabel + '] Scan Results (' + staged.length + ')</div>';

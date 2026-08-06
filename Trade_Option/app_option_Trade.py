@@ -1142,12 +1142,12 @@ HTML_TEMPLATE = """
             const sd = d.scan_display || {};
             const activeContracts = new Set();
             (d.kite_positions || []).forEach(p => {
-                const c = (p.contract || p.symbol || '').replace(/\s+/g, '').toUpperCase();
+                const c = (p.contract || p.symbol || '').replace(/\\s+/g, '').toUpperCase();
                 if (c) activeContracts.add(c);
             });
             (d.all_trades || []).forEach(t => {
                 if ((t.status || '').toLowerCase() === 'active') {
-                    const c = (t.contract || t.symbol || '').replace(/\s+/g, '').toUpperCase();
+                    const c = (t.contract || t.symbol || '').replace(/\\s+/g, '').toUpperCase();
                     if (c) activeContracts.add(c);
                 }
             });
@@ -1205,7 +1205,16 @@ HTML_TEMPLATE = """
             engines.forEach(eng => {
                 const data = sd[eng];
                 if (!data) return;
-                const staged = data.staged_trades || [];
+                const rawStaged = (data.staged_trades || []).concat(data.carry_forward || []);
+                const seenContracts = new Set();
+                const staged = [];
+                rawStaged.forEach(t => {
+                    const key = (t.contract || t.symbol || '').trim();
+                    if (key && !seenContracts.has(key)) {
+                        seenContracts.add(key);
+                        staged.push(t);
+                    }
+                });
                 const engLabel = eng === 'nifty50' ? 'Nifty 50' : 'Index';
                 if (staged.length) {
                     scanHtml += '<div class="scan-section-title">[' + engLabel + '] Scan Results (' + staged.length + ')</div>';

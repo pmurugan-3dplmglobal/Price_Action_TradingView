@@ -2,7 +2,7 @@
 REM ====================================================================
 REM  Automated Strategy Daily Exporter Launcher
 REM ====================================================================
-cd /d "G:\Poovendan\AI\Trading\Share\ReadyToDeploy\Prod_code_01\Price_Action_Strategy"
+cd /d "%~dp0"
 
 echo Select Execution Mode:
 echo 1. Run Export Now (Auto-detect slot or 10_30_AM)
