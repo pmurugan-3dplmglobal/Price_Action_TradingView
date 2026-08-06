@@ -272,8 +272,10 @@ def load_kite_session(token_file=TOKEN_FILE):
 def ensure_kite_session(kite, token_file=TOKEN_FILE):
     """Ensure the KiteConnect object in memory has the latest access token from disk if it changed."""
     try:
+        if not kite or getattr(kite, "access_token", None) == "open_source_token":
+            return
         target_file = get_best_token_file(token_file)
-        if not kite or not os.path.exists(target_file):
+        if not os.path.exists(target_file):
             return
         with open(target_file, "r", encoding="utf-8") as f:
             data = json.load(f)

@@ -332,39 +332,41 @@ def main_scan_loop(kite):
                     pos["entry_time"] = t.get("created_at") or dt.now().isoformat()
                 ACTIVE_POSITIONS[t["symbol"]] = pos
             logging.info(f"Recovered position: {t['symbol']} | {t.get('contract','')}")
-    try:
-        kite_positions = kite.positions()
-        for p in kite_positions.get("day", []) + kite_positions.get("net", []):
-            if p["exchange"] != "NFO" or int(p["quantity"]) == 0:
-                continue
-            symbol = next((s for s in INDEX_REGISTRY if s in p["tradingsymbol"]), None)
-            if not symbol or symbol in ACTIVE_POSITIONS:
-                continue
-            nq = abs(int(p["quantity"]))
-            lots = nq // INDEX_REGISTRY[symbol]["lot_size"]
-            if lots == 0:
-                continue
-            side = "CE" if "CE" in p["tradingsymbol"] else "PE"
-            pos = {
-                "contract": p["tradingsymbol"], "option_token": int(p["instrument_token"]),
-                "entry_spot": float(p.get("net_price") or p.get("buy_price") or p.get("average_price") or 0), "current_sl": 0,
-                "t1": 0, "t2": 0, "t3": 0, "trailing_stage": 0,
-                "lot_size": INDEX_REGISTRY[symbol]["lot_size"], "position_size": lots,
-                "pattern": "KITE_RECOVERED", "side": side,
-                "timeframe": TIMEFRAME_ENTRY,
-                "entry_time": dt.now().isoformat(),
-                "position_type": "option"
-            }
-            pos["trade_id"] = trade_db.create_trade("index", symbol, {k: v for k, v in pos.items() if k != "trade_id"})
-            scan_sl = lookup_scan_sl_target(p["tradingsymbol"], symbol, "index", kite, pos["entry_spot"], TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR)
-            if scan_sl:
-                pos.update(scan_sl)
-                trade_db.update_trade(pos["trade_id"], scan_sl)
-                logging.info(f"[KITE_RECOVER] Applied scan SL/Target for {symbol}: SL={scan_sl['current_sl']} T1={scan_sl['t1']} T2={scan_sl['t2']} T3={scan_sl['t3']}")
-            ACTIVE_POSITIONS[symbol] = pos
-            logging.info(f"Recovered from Kite: {symbol} {p['tradingsymbol']} qty={nq}")
-    except Exception as e:
-        logging.warning(f"Kite position recovery failed: {e}")
+    acc_token = getattr(kite, "access_token", "") if kite else ""
+    if kite and acc_token and acc_token != "open_source_token":
+        try:
+            kite_positions = kite.positions()
+            for p in kite_positions.get("day", []) + kite_positions.get("net", []):
+                if p["exchange"] != "NFO" or int(p["quantity"]) == 0:
+                    continue
+                symbol = next((s for s in INDEX_REGISTRY if s in p["tradingsymbol"]), None)
+                if not symbol or symbol in ACTIVE_POSITIONS:
+                    continue
+                nq = abs(int(p["quantity"]))
+                lots = nq // INDEX_REGISTRY[symbol]["lot_size"]
+                if lots == 0:
+                    continue
+                side = "CE" if "CE" in p["tradingsymbol"] else "PE"
+                pos = {
+                    "contract": p["tradingsymbol"], "option_token": int(p["instrument_token"]),
+                    "entry_spot": float(p.get("net_price") or p.get("buy_price") or p.get("average_price") or 0), "current_sl": 0,
+                    "t1": 0, "t2": 0, "t3": 0, "trailing_stage": 0,
+                    "lot_size": INDEX_REGISTRY[symbol]["lot_size"], "position_size": lots,
+                    "pattern": "KITE_RECOVERED", "side": side,
+                    "timeframe": TIMEFRAME_ENTRY,
+                    "entry_time": dt.now().isoformat(),
+                    "position_type": "option"
+                }
+                pos["trade_id"] = trade_db.create_trade("index", symbol, {k: v for k, v in pos.items() if k != "trade_id"})
+                scan_sl = lookup_scan_sl_target(p["tradingsymbol"], symbol, "index", kite, pos["entry_spot"], TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR)
+                if scan_sl:
+                    pos.update(scan_sl)
+                    trade_db.update_trade(pos["trade_id"], scan_sl)
+                    logging.info(f"[KITE_RECOVER] Applied scan SL/Target for {symbol}: SL={scan_sl['current_sl']} T1={scan_sl['t1']} T2={scan_sl['t2']} T3={scan_sl['t3']}")
+                ACTIVE_POSITIONS[symbol] = pos
+                logging.info(f"Recovered from Kite: {symbol} {p['tradingsymbol']} qty={nq}")
+        except Exception as e:
+            logging.warning(f"Kite position recovery failed: {e}")
     shared_reconcile(kite, INDEX_REGISTRY, ACTIVE_POSITIONS, position_lock, "index", TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR, LOOKBACK_DAYS, lambda sym, sp, step, opt, r: shared_resolve_strikes(instrument_dump, sym, sp, step, opt, r))
     cycle = 0
     while True:
