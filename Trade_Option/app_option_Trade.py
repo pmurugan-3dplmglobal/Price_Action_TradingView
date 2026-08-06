@@ -182,7 +182,7 @@ def set_backtest_mode(enabled):
         json.dump(cfg, f, indent=2)
 
 # ──────────────────────────────────────────────
-#  KITE TOKEN MANAGEMENT
+#  DATA LOADING & VALIDATION
 # ──────────────────────────────────────────────
 
 def check_token_valid():
@@ -1078,28 +1078,6 @@ HTML_TEMPLATE = """
                         contract: c_name,
                         engine: kp.exchange === 'NFO' ? 'Index' : 'Nifty 50',
                         pattern: kp.pattern || (dbMatch && dbMatch.pattern ? dbMatch.pattern : 'OPEN_TRADE'),
-                        entry_spot: kp.entry_price,
-                        quantity: kp.quantity,
-                        pnl: kp.pnl,
-                        current_sl: kp.current_sl !== undefined ? kp.current_sl : (dbMatch ? dbMatch.current_sl : ''),
-                        t1: kp.t1 !== undefined ? kp.t1 : (dbMatch ? dbMatch.t1 : ''),
-                        t2: kp.t2 !== undefined ? kp.t2 : (dbMatch ? dbMatch.t2 : ''),
-                        t3: kp.t3 !== undefined ? kp.t3 : (dbMatch ? dbMatch.t3 : ''),
-                        token: dbMatch ? (dbMatch.option_token || dbMatch.index_token || '') : (kp.token || ''),
-                        status: 'ACTIVE',
-                        source: 'local'
-                    };
-                    mergedPositions.push(item);
-                });
-            }
-
-            const dbSeen = new Set();
-            allTrades.forEach(t => {
-                const contract = t.contract || t.symbol || '';
-                const inActive = actPosList.some(kp => kp.contract === contract || kp.contract.includes(contract) || contract.includes(kp.contract));
-                if (inActive) return;                     contract: c_name,
-                        engine: kp.exchange === 'NFO' ? 'Index' : 'Nifty 50',
-                        pattern: kp.pattern || (dbMatch && dbMatch.pattern ? dbMatch.pattern : 'KITE_OPEN'),
                         entry_spot: kp.entry_price,
                         quantity: kp.quantity,
                         pnl: kp.pnl,
@@ -2500,7 +2478,6 @@ def api_analyze_trade():
         if not symbol:
             return jsonify({"ok": False, "error": "Valid Symbol or Contract Name required"}), 400
 
-        kite = None
         analysis = derive_sl_targets_for_contract(None, symbol, entry_price, timeframe_entry, timeframe_anchor)
         if not analysis:
             sl_val = round(entry_price * 0.90, 2) if entry_price > 0 else 0.0
@@ -2554,7 +2531,7 @@ def api_journal_sync():
         from daily_trade_journal import generate_daily_journal
         req = request.json or {}
         dt_str = req.get("date")
-        entries = generate_daily_journal(dt_str, kite=None)
+        entries = generate_daily_journal(dt_str)
         return jsonify({"ok": True, "count": len(entries), "entries": entries})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -2670,7 +2647,7 @@ def auto_eod_journal_scheduler():
                     _last_eod_journal_triggered_date = today_str
                     logging.info(f"[AUTO EOD JOURNAL] Market closed. Auto-generating EOD trade journal for {today_str}...")
                     from daily_trade_journal import generate_daily_journal
-                    generate_daily_journal(target_date=today_str, kite=None)
+                    generate_daily_journal(target_date=today_str)
                     logging.info(f"[AUTO EOD JOURNAL] Successfully completed EOD trade journal sync for {today_str}.")
         except Exception as e:
             logging.warning(f"[AUTO EOD JOURNAL] Error in scheduler: {e}")
