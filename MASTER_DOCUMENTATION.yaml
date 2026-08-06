@@ -25,9 +25,9 @@ architecture:
                   │
                   ▼
           Centralized Shared Core (common/)
-            ├── trading_core.py (Scanners, Negation Theory, Resampling, Registries)
+            ├── trading_core.py (Scanners, Negation Theory, Resampling, Registries, Generic Yahoo/CSV Data Fetcher)
             ├── trade_db.py (Thread-safe JSON persistence & staging)
-            └── Kite_Access_Token_gen.py (Daily Zerodha OAuth token CLI)
+            └── spot_enricher.py (CSV Export Spot Trend & Target Annotator)
 
   directory:
     common:

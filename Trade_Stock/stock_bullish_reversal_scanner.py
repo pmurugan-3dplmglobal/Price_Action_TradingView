@@ -107,12 +107,6 @@ def run_scan(kite):
     with ThreadPoolExecutor(max_workers=10) as pool:
         futures = {}
         for symbol in scan_order:
-            tok = token_map.get(symbol, 0)
-            if not tok:
-                logging.warning(f"Skipping {symbol}: Instrument token missing")
-                with results_lock:
-                    results.append({"Symbol": symbol, "Pattern": "NO_TOKEN"})
-                continue
             futures[pool.submit(
                 lambda s=symbol: fetch_and_resample_candles(kite, s, from_date, to_date, TIMEFRAME_ENTRY)
             )] = symbol
