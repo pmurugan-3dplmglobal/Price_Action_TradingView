@@ -631,28 +631,37 @@ HTML_TEMPLATE = """
         let positionFilter = 'active';
 
         // ── Tab Switching ──
-        function switchLeftTab(tabId) {
+        function switchLeftTab(tabId, btnEl) {
             document.querySelectorAll('.left-tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.left-tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
+            const content = document.getElementById(tabId);
+            if (content) content.classList.add('active');
+            const b = btnEl || (window.event ? (window.event.currentTarget || window.event.target) : null);
+            if (b && b.classList) b.classList.add('active');
             if (tabId === 'backtest-tab') renderBacktest();
             if (tabId === 'scan-tab-left') renderScanTab();
         }
 
-        function switchTab(tabId) {
+        function switchTab(tabId, btnEl) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
+            const content = document.getElementById(tabId);
+            if (content) content.classList.add('active');
+            const b = btnEl || (window.event ? (window.event.currentTarget || window.event.target) : null);
+            if (b && b.classList) b.classList.add('active');
         }
 
         // ── Filter Controls ──
-        function setFilter(type, value) {
+        function setFilter(type, value, btnEl) {
             if (type === 'journal') journalFilter = value;
             else if (type === 'scan') scanFilter = value;
             else if (type === 'log') logFilter = value;
-            else if (type === 'position') { positionFilter = value; document.querySelectorAll('.pos-filter-btn').forEach(b => b.classList.remove('active')); event.target.classList.add('active'); }
+            else if (type === 'position') {
+                positionFilter = value;
+                document.querySelectorAll('.pos-filter-btn').forEach(b => b.classList.remove('active'));
+                const b = btnEl || (window.event ? (window.event.currentTarget || window.event.target) : null);
+                if (b && b.classList) b.classList.add('active');
+            }
             renderReport();
         }
 
