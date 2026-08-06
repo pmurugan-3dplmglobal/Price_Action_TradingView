@@ -4,21 +4,10 @@ if COMMON_DIR not in sys.path:
     sys.path.insert(0, COMMON_DIR)
 from datetime import datetime as dt
 from flask import Flask, render_template_string, jsonify, request, Response
-try:
-    from kiteconnect import KiteConnect
-except ImportError:
-    class KiteConnect:
-        def __init__(self, *args, **kwargs):
-            self.access_token = "open_source_token"
-        def historical_data(self, *args, **kwargs):
-            return []
-        def quote(self, *args, **kwargs):
-            return {}
 import trade_db
 from trading_core import (
     lookup_scan_sl_target,
     derive_sl_targets_for_contract,
-    load_kite_session,
     close_position as shared_close_position,
     close_stock_position as shared_close_stock_position,
     clear_executed_exit
@@ -30,20 +19,7 @@ app = Flask(__name__)
 #  FILE PATHS & DASHBOARD CONFIG
 # ──────────────────────────────────────────────
 
-
-def get_kite_credentials():
-    """Read Kite API key/secret from config (moved out of source)."""
-    cfg = load_config()
-    api_key = cfg.get("api_key", "")
-    api_secret = cfg.get("api_secret", "")
-    if not api_key or not api_secret:
-        logging.warning("api_key/api_secret missing in program_config.json")
-    return api_key, api_secret
-
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-TOKEN_FILE = os.path.join(BASE_DIR, "input", "kite_access_token.txt")
 CONFIG_FILE = os.path.join(BASE_DIR, "input", "program_config.json")
 STATE_FILE = os.path.join(BASE_DIR, "output", "monitor", "stock_positions_state.json")
 JOURNAL_FILE = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
@@ -131,7 +107,7 @@ cached_data = {
     "scans": {"daily": [], "bear_trade": []},
     "scan_summary": {"daily": {"anchors": {}, "abc_matches": {}}, "bear_trade": {"anchors": {}, "abc_matches": {}}},
     "all_trades": [],
-    "kite_positions": [],
+    "active_positions": [],
     "ltp": {},
     "anchor_status": {"running": False, "engine": None, "requested_at": None, "completed_at": None},
     "scan_display": {"date": "", "timestamp": "", "staged_trades": [], "active_positions": []},
@@ -139,8 +115,6 @@ cached_data = {
     "live_execution_index": False
 }
 _ltp_last_fetch = 0
-_kite_positions_last_fetch = 0
-_kite_session = None
 _last_scan_reset = ""
 
 # ──────────────────────────────────────────────
@@ -350,7 +324,7 @@ def parse_scans_for_program(log_lines, prog_id):
 # ──────────────────────────────────────────────
 
 def refresh_data():
-    global cached_data, _ltp_last_fetch, _kite_positions_last_fetch, _kite_session, _last_scan_reset
+    global cached_data, _ltp_last_fetch, _last_scan_reset
     while True:
         with data_lock:
             pos = load_positions()
@@ -423,132 +397,26 @@ def refresh_data():
             cached_data["scan_display"] = scan_display
             cached_data["live_execution"] = os.path.exists(LIVE_EXECUTION_FLAG)
             cached_data["live_execution_index"] = os.path.exists(LIVE_EXECUTION_FLAG_INDEX)
-            now = time.time()
-            if now - _ltp_last_fetch > 30 and cached_data["all_trades"]:
-                _ltp_last_fetch = now
-                try:
-                    active = trade_db.get_active_trades()
-                    if active:
-                        if not _kite_session:
-                            tk = check_token_valid()
-                            if tk["valid"]:
-                                td = json.load(open(TOKEN_FILE))
-                                api_key, _ = get_kite_credentials()
-                                ks = KiteConnect(api_key=api_key)
-                                ks.set_access_token(td["access_token"])
-                                _kite_session = ks
-                        if _kite_session:
-                            syms = []
-                            for t in active:
-                                tok = t.get("option_token") or t.get("index_token")
-                                if tok: syms.append(int(tok))
-                            if syms:
-                                quotes = _kite_session.quote(syms)
-                                ltp = {}
-                                for key, q in quotes.items():
-                                    ltp[key.split(":")[-1]] = q.get("last_price", 0)
-                                cached_data["ltp"] = ltp
-                except Exception:
-                    _kite_session = None
-        if now - _kite_positions_last_fetch > 5:
-            _kite_positions_last_fetch = now
             try:
-                if not _kite_session:
-                    tk = check_token_valid()
-                    if tk["valid"]:
-                        td = json.load(open(TOKEN_FILE))
-                        api_key, _ = get_kite_credentials()
-                        ks = KiteConnect(api_key=api_key)
-                        ks.set_access_token(td["access_token"])
-                        _kite_session = ks
-                if _kite_session:
-                    kite_positions = _kite_session.positions()
-                    merged = []
-                    for p in kite_positions.get("net", []):
-                        sym = p.get("tradingsymbol", "")
-                        if not sym:
-                            continue
-                        qty = int(p.get("quantity", 0))
-                        if qty <= 0:
-                            continue
-                        entry_pr = float(p.get("average_price", 0))
-                        exch = p.get("exchange", "NSE")
-                        q_key = f"{exch}:{sym}"
-                        live_ltp = 0
-                        try:
-                            q_data = _kite_session.quote([q_key]).get(q_key, {})
-                            live_ltp = float(q_data.get("last_price", 0))
-                        except Exception:
-                            pass
-                        live_pnl = round((live_ltp - entry_pr) * qty, 2) if live_ltp > 0 and entry_pr > 0 else float(p.get("pnl", 0))
-                        if live_ltp > 0:
-                            cached_data["ltp"][str(sym)] = live_ltp
-                            tok_id = p.get("instrument_token")
-                            if tok_id:
-                                cached_data["ltp"][str(tok_id)] = live_ltp
-
-                        # Fail-Safe Active Position Risk Monitor
-                        try:
-                            scan_sl = lookup_scan_sl_target(sym, sym, "daily", _kite_session, entry_pr, is_stock=True)
-                            
-                            pos_item = {
-                                "contract": sym,
-                                "symbol": sym,
-                                "quantity": qty,
-                                "entry_price": entry_pr,
-                                "entry_spot": entry_pr,
-                                "ltp": live_ltp,
-                                "pnl": live_pnl,
-                                "exchange": exch,
-                                "source": "kite"
-                            }
-                            if scan_sl:
-                                pos_item["current_sl"] = scan_sl.get("current_sl", 0)
-                                pos_item["t1"] = scan_sl.get("t1", 0)
-                                pos_item["t2"] = scan_sl.get("t2", 0)
-                                pos_item["t3"] = scan_sl.get("t3", 0)
-                                pos_item["pattern"] = scan_sl.get("pattern", "SCAN_LINKED")
-                            merged.append(pos_item)
-
-                            if scan_sl:
-                                ltp_val = live_ltp
-                                sl_val = float(scan_sl.get("current_sl", 0))
-                                t3_val = float(scan_sl.get("t3", 0))
-
-                                clean_sym = str(sym).replace(" ", "").upper()
-
-                                sl_buffered = round(sl_val * 0.995, 2)
-                                is_below_buffer = ltp_val <= sl_buffered
-                                is_deep_break = ltp_val <= round(sl_val * 0.985, 2)
-
-                                prev_closed_below = False
-                                token_id = scan_sl.get("option_token") or scan_sl.get("index_token") or scan_sl.get("token")
-                                if token_id and _kite_session:
-                                    try:
-                                        df_hist = fetch_and_resample_candles(_kite_session, token_id, (dt.now() - timedelta(days=2)).strftime("%Y-%m-%d"), dt.now().strftime("%Y-%m-%d"), "15minute")
-                                        if len(df_hist) >= 2:
-                                            prev_close_val = float(df_hist.iloc[-2]["close"])
-                                            if prev_close_val > 0 and prev_close_val <= sl_val:
-                                                prev_closed_below = True
-                                    except Exception:
-                                        pass
-
-                                # TASK 1: Pause automated exit execution if user is actively editing this symbol on the UI
-                                if clean_sym in ACTIVE_EDIT_LOCKS:
-                                    logging.info(f"[FAILSAFE PAUSED] {sym} is currently being edited on UI. Automated exit execution paused.")
-                                # TASK 2: Execute SL exit ONLY IF below 0.5% buffer AND (previous candle closed below SL OR emergency deep break)
-                                elif ltp_val > 0 and sl_val > 0 and is_below_buffer and (prev_closed_below or is_deep_break):
-                                    logging.warning(f"[FAILSAFE MONITOR EXIT SL CONFIRMED] {sym} LTP={ltp_val} <= Buffered SL={sl_buffered} (Prev Close Below: {prev_closed_below}, Deep Break: {is_deep_break})")
-                                    pos_obj = {"contract": sym, "position_size": qty, "quantity": qty, "symbol": sym}
-                                    shared_close_stock_position(_kite_session, pos_obj, True, p.get("product"))
-                                elif ltp_val > 0 and t3_val > 0 and ltp_val >= t3_val:
-                                    logging.info(f"[FAILSAFE MONITOR EXIT T3] {sym} LTP={ltp_val} >= T3={t3_val}")
-                                    pos_obj = {"contract": sym, "position_size": qty, "quantity": qty, "symbol": sym}
-                                    shared_close_stock_position(_kite_session, pos_obj, True, p.get("product"))
-                        except Exception as fs_err:
-                            logging.debug(f"Failsafe monitor error for {sym}: {fs_err}")
-
-                    cached_data["kite_positions"] = merged
+                active = trade_db.get_active_trades()
+                active_list = []
+                for t in active:
+                    active_list.append({
+                        "contract": t.get("contract") or t.get("symbol"),
+                        "symbol": t.get("symbol") or t.get("contract"),
+                        "quantity": t.get("position_size", 1),
+                        "entry_price": t.get("entry_spot", 0),
+                        "entry_spot": t.get("entry_spot", 0),
+                        "ltp": t.get("current_price") or t.get("entry_spot", 0),
+                        "pnl": t.get("pnl", 0),
+                        "current_sl": t.get("current_sl", 0),
+                        "t1": t.get("t1", 0),
+                        "t2": t.get("t2", 0),
+                        "t3": t.get("t3", 0),
+                        "pattern": t.get("pattern", "ACTIVE"),
+                        "source": "local"
+                    })
+                cached_data["active_positions"] = active_list
             except Exception:
                 pass
         if int(time.time()) % 3600 < REFRESH_SECONDS:
@@ -1074,7 +942,7 @@ HTML_TEMPLATE = """
             if (!d) return;
             const sd = d.scan_display || {};
             const activeContracts = new Set();
-            (d.kite_positions || []).forEach(p => {
+            (d.active_positions || []).forEach(p => {
                 const c = (p.contract || p.symbol || '').replace(/\\s+/g, '').toUpperCase();
                 if (c) activeContracts.add(c);
             });
@@ -1223,11 +1091,10 @@ HTML_TEMPLATE = """
             const d = window._lastData;
             if (!d) return;
             const stats = d.stats || {};
-            const positions = d.positions || {};
-            const kitePos = d.kite_positions || [];
+            const actPosList = d.active_positions || d.positions || [];
             const journal = d.journal || [];
 
-            const actPos = kitePos.length || Object.keys(positions).length;
+            const actPos = actPosList.length || 0;
             document.getElementById('stat-active').textContent = actPos;
             document.getElementById('stat-total').textContent = stats.total_trades || 0;
 
@@ -1254,7 +1121,7 @@ HTML_TEMPLATE = """
             let seenContracts = new Set();
 
             if (positionFilter === 'all' || positionFilter === 'active') {
-                kitePos.forEach(kp => {
+                actPosList.forEach(kp => {
                     const c_name = kp.contract || kp.symbol;
                     if (!c_name || seenContracts.has(c_name)) return;
                     seenContracts.add(c_name);
@@ -1268,7 +1135,7 @@ HTML_TEMPLATE = """
                         symbol: c_name,
                         contract: c_name,
                         engine: kp.exchange === 'NFO' ? 'Index' : 'Nifty 50',
-                        pattern: kp.pattern || (dbMatch && dbMatch.pattern ? dbMatch.pattern : 'KITE_OPEN'),
+                        pattern: kp.pattern || (dbMatch && dbMatch.pattern ? dbMatch.pattern : 'OPEN_TRADE'),
                         entry_spot: kp.entry_price,
                         quantity: kp.quantity,
                         pnl: kp.pnl,
@@ -1278,7 +1145,7 @@ HTML_TEMPLATE = """
                         t3: kp.t3 !== undefined ? kp.t3 : (dbMatch ? dbMatch.t3 : ''),
                         token: dbMatch ? (dbMatch.option_token || dbMatch.index_token || '') : (kp.token || ''),
                         status: 'ACTIVE',
-                        source: 'kite'
+                        source: 'local'
                     };
                     mergedPositions.push(item);
                 });
@@ -1287,10 +1154,10 @@ HTML_TEMPLATE = """
             const dbSeen = new Set();
             allTrades.forEach(t => {
                 const contract = t.contract || t.symbol || '';
-                const inKite = kitePos.some(kp => kp.contract === contract || kp.contract.includes(contract) || contract.includes(kp.contract));
-                if (inKite) return;
+                const inActive = actPosList.some(kp => kp.contract === contract || kp.contract.includes(contract) || contract.includes(kp.contract));
+                if (inActive) return;
                 let st = (t.status || '').toLowerCase();
-                if (st === 'active' && !inKite) st = 'exited';
+                if (st === 'active' && !inActive) st = 'exited';
                 if (positionFilter === 'active' && st !== 'active') return;
                 if (positionFilter === 'completed' && st !== 'sl_hit' && st !== 'target_hit' && st !== 'exited') return;
                 if (positionFilter === 'sl_hit' && st !== 'sl_hit') return;
@@ -2166,7 +2033,7 @@ def api_status():
             "programs": prog_status,
             "positions": cached_data["positions"],
             "all_trades": cached_data["all_trades"],
-            "kite_positions": cached_data["kite_positions"],
+            "active_positions": cached_data["active_positions"],
             "ltp": {str(k): v for k, v in cached_data["ltp"].items()},
             "journal": cached_data["journal"],
             "stats": cached_data["stats"],
@@ -2541,8 +2408,8 @@ def api_update_position():
                     if tid:
                         trade_db.update_trade(tid, vals)
 
-        # 3. Update in-memory kite_positions so UI refreshes immediately
-        for kp in cached_data.get("kite_positions", []):
+        # 3. Update in-memory active_positions so UI refreshes immediately
+        for kp in cached_data.get("active_positions", []):
             k_sym = str(kp.get("symbol") or "").replace(" ", "").upper()
             k_cnt = str(kp.get("contract") or "").replace(" ", "").upper()
             if clean_target in (k_sym, k_cnt) or k_sym in clean_target or k_cnt in clean_target:
@@ -2551,7 +2418,7 @@ def api_update_position():
         if not matched:
             contract = symbol
             exchange = "NSE"
-            for kp in cached_data.get("kite_positions", []):
+            for kp in cached_data.get("active_positions", []):
                 k_sym = str(kp.get("symbol") or "").replace(" ", "").upper()
                 k_cnt = str(kp.get("contract") or "").replace(" ", "").upper()
                 if clean_target in (k_sym, k_cnt) or k_sym in clean_target or k_cnt in clean_target:
@@ -2655,27 +2522,7 @@ def api_exit_position():
                 })
                 exited_ids.append(t["id"])
 
-        global _kite_session
-        if _kite_session:
-            try:
-                c_str = target_str
-                if "SENSEX" in c_str or "BSE" in c_str:
-                    exch = "BFO"
-                elif "CE" in c_str or "PE" in c_str or "NIFTY" in c_str or "BANK" in c_str:
-                    exch = "NFO"
-                else:
-                    exch = "NSE"
-                
-                pos_obj = {
-                    "contract": contract,
-                    "symbol": symbol,
-                    "exchange": exch,
-                    "quantity": data.get("quantity", 0)
-                }
-                from common.trading_core import close_position as shared_close
-                shared_close(_kite_session, pos_obj, True)
-            except Exception as k_err:
-                logging.warning(f"Live exit execution warning for {contract}: {k_err}")
+        logging.info(f"[MANUAL EXIT] Closed position for {contract or symbol}")
 
         for disp_path in [SCAN_DISPLAY_FILE, SCAN_DISPLAY_INDEX_FILE]:
             if os.path.exists(disp_path):
@@ -2749,21 +2596,7 @@ def api_analyze_trade():
         if not symbol:
             return jsonify({"ok": False, "error": "Valid Symbol or Contract Name required"}), 400
 
-        kite = None
-        try:
-            api_k, acc_t = load_kite_session()
-            kite = KiteConnect(api_key=api_k, access_token=acc_t)
-        except Exception:
-            kite = None
-
-        if timeframe == "30minute":
-            timeframe_entry = "30minute"
-            timeframe_anchor = "30minute"
-        else:
-            timeframe_entry = "15minute" if timeframe in ["15minute", "75min", "60minute"] else timeframe
-            timeframe_anchor = "75min" if timeframe in ["15minute", "75min"] else ("60minute" if timeframe == "60minute" else timeframe)
-
-        analysis = derive_sl_targets_for_contract(kite, symbol, entry_price, timeframe_entry, timeframe_anchor)
+        analysis = derive_sl_targets_for_contract(None, symbol, entry_price, timeframe_entry, timeframe_anchor)
         if not analysis:
             sl_val = round(entry_price * 0.90, 2) if entry_price > 0 else 0.0
             analysis = {
