@@ -255,10 +255,16 @@ def scan_all_patterns_in_dataset(df_opt, start_dt, end_dt):
 
     return found_setups
 
-def run_master_backtest(start_date="2026-07-20", end_date="2026-07-25"):
+def run_master_backtest(start_date=None, end_date=None):
     t0 = time.time()
-    start_dt = pd.to_datetime(start_date).tz_localize('Asia/Kolkata')
-    end_dt = pd.to_datetime(end_date + " 23:59:59").tz_localize('Asia/Kolkata')
+    now = pd.Timestamp.now(tz='Asia/Kolkata')
+    if not end_date:
+        end_date = now.strftime("%Y-%m-%d")
+    if not start_date:
+        start_date = (now - pd.Timedelta(days=30)).strftime("%Y-%m-%d")
+
+    start_dt = pd.to_datetime(start_date).tz_localize('Asia/Kolkata') if pd.to_datetime(start_date).tz is None else pd.to_datetime(start_date)
+    end_dt = pd.to_datetime(end_date + " 23:59:59").tz_localize('Asia/Kolkata') if pd.to_datetime(end_date).tz is None else pd.to_datetime(end_date + " 23:59:59")
     
     # 1. INDEX OPTIONS ENGINE (15-MIN TF)
     index_symbols = ["NIFTY", "BANKNIFTY", "SENSEX"]
@@ -335,4 +341,4 @@ def run_master_backtest(start_date="2026-07-20", end_date="2026-07-25"):
     print(f"BACKTEST_FINISHED_SUCCESSFULLY in {time.time() - t0:.2f}s", flush=True)
 
 if __name__ == "__main__":
-    run_master_backtest(start_date="2026-07-20", end_date="2026-07-25")
+    run_master_backtest()

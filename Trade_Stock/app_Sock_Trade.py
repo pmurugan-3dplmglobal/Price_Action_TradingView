@@ -422,6 +422,20 @@ def refresh_data():
                 if os.path.exists(SCAN_DISPLAY_FILE):
                     with open(SCAN_DISPLAY_FILE, "r") as f:
                         scan_display["nifty50"] = json.load(f)
+                option_scan_file = os.path.abspath(os.path.join(BASE_DIR, "..", "Trade_Option", "output", "monitor", "scan_display_data.json"))
+                if os.path.exists(option_scan_file):
+                    with open(option_scan_file, "r") as f:
+                        opt_disp = json.load(f)
+                    if opt_disp.get("staged_trades"):
+                        if not scan_display.get("nifty50"):
+                            scan_display["nifty50"] = opt_disp
+                        else:
+                            existing_staged = scan_display["nifty50"].get("staged_trades", [])
+                            existing_syms = {t.get("symbol") for t in existing_staged if t.get("symbol")}
+                            for st in opt_disp.get("staged_trades", []):
+                                if st.get("symbol") not in existing_syms:
+                                    existing_staged.append(st)
+                            scan_display["nifty50"]["staged_trades"] = existing_staged
             except Exception:
                 pass
             try:

@@ -406,8 +406,13 @@ def refresh_data():
                     if stock_disp.get("staged_trades"):
                         if not scan_display.get("nifty50"):
                             scan_display["nifty50"] = stock_disp
-                        elif not scan_display["nifty50"].get("staged_trades"):
-                            scan_display["nifty50"]["staged_trades"] = stock_disp["staged_trades"]
+                        else:
+                            existing_staged = scan_display["nifty50"].get("staged_trades", [])
+                            existing_syms = {t.get("symbol") for t in existing_staged if t.get("symbol")}
+                            for st in stock_disp.get("staged_trades", []):
+                                if st.get("symbol") not in existing_syms:
+                                    existing_staged.append(st)
+                            scan_display["nifty50"]["staged_trades"] = existing_staged
             except Exception:
                 pass
             try:
