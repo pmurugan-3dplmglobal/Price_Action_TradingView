@@ -381,9 +381,11 @@ def refresh_data():
                         if os.path.exists(f):
                             with open(f, "r") as fh:
                                 existing = json.load(fh)
-                            if existing.get("staged_trades"):
+                            if existing and isinstance(existing, dict):
                                 existing["date"] = today_str
                                 existing["timestamp"] = now_ist.strftime("%Y-%m-%d %H:%M:%S")
+                                if "staged_trades" not in existing: existing["staged_trades"] = []
+                                if "carry_forward" not in existing: existing["carry_forward"] = []
                                 with open(f, "w") as fh:
                                     json.dump(existing, fh, indent=2)
                                 continue  # Keep existing scan display data intact

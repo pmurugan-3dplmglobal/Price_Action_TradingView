@@ -113,7 +113,7 @@ def load_state():
         try:
             with open(STATE_FILE, "r", encoding="utf-8") as f:
                 ACTIVE_POSITIONS = json.load(f)
-            logging.info(f"Recovered {len(ACTIVE_POSITIONS)} positions")
+            logging.info(f"Loaded {len(ACTIVE_POSITIONS)} stored active positions from local database")
         except Exception:
             ACTIVE_POSITIONS = {}
 
@@ -699,7 +699,7 @@ def main():
                     pos["entry_time"] = t.get("created_at") or dt.now().isoformat()
                 with position_lock:
                     ACTIVE_POSITIONS[t["symbol"]] = pos
-                logging.info(f"Recovered position: {t['symbol']}")
+                logging.info(f"Loaded active position from database: {t['symbol']}")
             acc_token = getattr(kite, "access_token", "") if kite else ""
             if kite and acc_token and acc_token != "open_source_token":
                 try:
