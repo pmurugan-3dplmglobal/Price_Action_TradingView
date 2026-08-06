@@ -213,30 +213,6 @@ def set_backtest_mode(enabled):
 def check_token_valid():
     return {"valid": True, "reason": "Free Open-Source Data Feed Active"}
 
-def get_login_url():
-    api_key, _ = get_kite_credentials()
-    kite = KiteConnect(api_key=api_key)
-    return f"https://kite.zerodha.com/connect/login?api_key={api_key}"
-
-def exchange_request_token(request_token):
-    """Exchange Kite request_token for access_token and save to file."""
-    try:
-        api_key, api_secret = get_kite_credentials()
-        kite = KiteConnect(api_key=api_key)
-        session = kite.generate_session(request_token, api_secret=api_secret)
-        access_token = session["access_token"]
-        token_data = {
-            "api_key": api_key,
-            "access_token": access_token,
-            "generated_at": dt.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
-        with open(TOKEN_FILE, "w") as f:
-            json.dump(token_data, f, indent=4)
-        return {"ok": True, "access_token": access_token[:8] + "..."}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
 # ──────────────────────────────────────────────
 #  DATA LOADING (trade_db, journal, logs)
 # ──────────────────────────────────────────────
@@ -2704,51 +2680,7 @@ def api_buy_scanned_trade():
         else:
             exch = "NSE"
 
-        global _kite_session
-        order_id = None
-        if not _kite_session:
-            try:
-                from trading_core import load_kite_session
-                api_k, acc_t = load_kite_session()
-                if api_k and acc_t:
-                    from kiteconnect import KiteConnect
-                    _kite_session = KiteConnect(api_key=api_k)
-                    _kite_session.set_access_token(acc_t)
-            except Exception as init_err:
-                logging.warning(f"1-Click Buy auto-init kite session failed: {init_err}")
-
-        if _kite_session:
-            try:
-                q_key = f"{exch}:{contract}"
-                q = _kite_session.quote([q_key])
-                ltp = float(q.get(q_key, {}).get("last_price", 0))
-                ask = 0
-                depth = q.get(q_key, {}).get("depth", {}).get("sell", [])
-                if depth and len(depth) > 0:
-                    ask = float(depth[0].get("price", 0))
-                price = round((ask if ask > 0 else ltp) * 1.005, 1)
-                if price <= 0:
-                    price = round(entry_spot * 1.005, 1)
-                
-                from trading_core import INDEX_REGISTRY, STOCK_REGISTRY, get_option_lot_size
-                registry = INDEX_REGISTRY if engine == "index" else STOCK_REGISTRY
-                lot_size = get_option_lot_size(contract) or registry.get(symbol, {}).get("lot_size", 1)
-                prod = _kite_session.PRODUCT_CNC if exch == "NSE" else _kite_session.PRODUCT_NRML
-                
-                order_id = _kite_session.place_order(
-                    variety=_kite_session.VARIETY_REGULAR,
-                    tradingsymbol=contract,
-                    exchange=exch,
-                    transaction_type=_kite_session.TRANSACTION_TYPE_BUY,
-                    quantity=lot_size,
-                    order_type=_kite_session.ORDER_TYPE_LIMIT,
-                    price=price,
-                    product=prod
-                )
-                logging.info(f"[1-CLICK BUY] Placed buy order for {contract} on {exch} (Order ID: {order_id})")
-            except Exception as k_err:
-                logging.warning(f"[1-CLICK BUY KITE ORDER WARNING] {contract}: {k_err}")
-                return jsonify({"ok": False, "error": f"Kite Order Placement Failed: {k_err}"}), 400
+        logging.info(f"[1-CLICK BUY] Staging open-source trade setup for {contract}")
 
         trade_data = {
             "contract": contract,
@@ -2790,20 +2722,7 @@ def api_analyze_trade():
             return jsonify({"ok": False, "error": "Valid Symbol or Contract Name required"}), 400
 
         kite = None
-        try:
-            api_k, acc_t = load_kite_session()
-            kite = KiteConnect(api_key=api_k, access_token=acc_t)
-        except Exception:
-            kite = None
-
-        if timeframe == "30minute":
-            timeframe_entry = "30minute"
-            timeframe_anchor = "30minute"
-        else:
-            timeframe_entry = "15minute" if timeframe in ["15minute", "75min", "60minute"] else timeframe
-            timeframe_anchor = "75min" if timeframe in ["15minute", "75min"] else ("60minute" if timeframe == "60minute" else timeframe)
-
-        analysis = derive_sl_targets_for_contract(kite, symbol, entry_price, timeframe_entry, timeframe_anchor)
+        analysis = derive_sl_targets_for_contract(None, symbol, entry_price, timeframe_entry, timeframe_anchor)
         if not analysis:
             sl_val = round(entry_price * 0.90, 2) if entry_price > 0 else 0.0
             analysis = {
@@ -2856,7 +2775,7 @@ def api_journal_sync():
         from daily_trade_journal import generate_daily_journal
         req = request.json or {}
         dt_str = req.get("date")
-        entries = generate_daily_journal(dt_str, kite=_kite_session)
+        entries = generate_daily_journal(dt_str, kite=None)
         return jsonify({"ok": True, "count": len(entries), "entries": entries})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
