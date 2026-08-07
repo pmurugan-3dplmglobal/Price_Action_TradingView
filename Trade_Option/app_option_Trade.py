@@ -1039,6 +1039,7 @@ HTML_TEMPLATE = """
             if (!force && (window._isEditing || (document.activeElement && document.activeElement.tagName === "INPUT"))) return;
             const d = window._lastData;
             if (!d) return;
+            const actPosList = d.active_positions || d.positions || [];
             let totalStaged = 0;
             const sd = d.scan_display || {};
             Object.values(sd).forEach(v => { totalStaged += (v.staged_trades || []).length; });
@@ -2145,6 +2146,10 @@ def admin_users():
     if session.get("role") != "admin":
         return jsonify({"ok": False, "error": "Admin only"}), 403
     return jsonify({"ok": True, "users": dashboard_auth.list_users()})
+
+@app.route("/favicon.ico")
+def favicon():
+    return "", 204
 
 @app.route("/")
 def dashboard():
