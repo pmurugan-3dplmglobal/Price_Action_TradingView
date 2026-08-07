@@ -1792,10 +1792,11 @@ def write_scan_display_data(staged, active, display_file, engine_name=None):
         else:
             staged_list = (preserved or []) + (new_staged or [])
 
+        # Deduplicate staged trades by unique contract key: keep freshest entry_time & highest RR
         contract_map = {}
         for t in staged_list:
             key = _trade_key(t)
-            if not key:
+            if not key or key in active_keys:
                 continue
             if key not in contract_map:
                 contract_map[key] = t
