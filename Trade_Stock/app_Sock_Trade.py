@@ -984,15 +984,17 @@ HTML_TEMPLATE = """
                 const data = sd[eng];
                 if (!data) return;
                 const rawStaged = data.staged_trades || [];
-                const seenContracts = new Set();
-                const staged = [];
+                const bestBySymbol = {};
                 rawStaged.forEach(t => {
-                    const key = (t.contract || t.symbol || '').trim();
-                    if (key && !seenContracts.has(key)) {
-                        seenContracts.add(key);
-                        staged.push(t);
+                    const sym = (t.symbol || '').trim();
+                    if (!sym) return;
+                    const rr = t.rr !== undefined && t.rr !== null ? parseFloat(t.rr) : 0;
+                    const cur = bestBySymbol[sym];
+                    if (!cur || rr > (cur.rr !== undefined && cur.rr !== null ? parseFloat(cur.rr) : 0)) {
+                        bestBySymbol[sym] = t;
                     }
                 });
+                const staged = Object.values(bestBySymbol);
                 const engLabel = eng === 'nifty50' ? 'Nifty 50' : 'Index';
                 if (staged.length) {
                     scanHtml += '<div class="scan-section-title">[' + engLabel + '] Scan Results (' + staged.length + ')</div>';
