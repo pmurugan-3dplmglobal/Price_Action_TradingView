@@ -1,13 +1,37 @@
 import json, os, time, threading
 
+def _get_db_path():
+    candidates = [
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Trade_Option", "output", "monitor", "trades_db.json")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Trade_Stock", "output", "monitor", "trades_db.json")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "output", "monitor", "trades_db.json")),
+        os.path.join("output", "monitor", "trades_db.json")
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as fh:
+                    d = json.load(fh)
+                    trades = d.get("trades", [])
+                    active_cnt = len([t for t in trades if t.get("status") == "ACTIVE"])
+                    if active_cnt > 0:
+                        return p
+            except Exception:
+                pass
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return os.path.join("output", "monitor", "trades_db.json")
+
 TRADES_DB = "output/monitor/trades_db.json"
 
 def _read():
-    if not os.path.exists(TRADES_DB):
+    db_path = _get_db_path()
+    if not os.path.exists(db_path):
         return {"next_id": 1, "trades": []}
     for _ in range(3):
         try:
-            with open(TRADES_DB, "r", encoding="utf-8") as f:
+            with open(db_path, "r", encoding="utf-8") as f:
                 db = json.load(f)
                 if "trades" not in db:
                     db["trades"] = []
@@ -34,13 +58,14 @@ def _sync_tab_databases(db):
         pass
 
 def _write(db):
-    os.makedirs(os.path.dirname(TRADES_DB), exist_ok=True)
-    tmp = TRADES_DB + ".tmp"
+    db_path = _get_db_path()
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    tmp = db_path + ".tmp"
     for _ in range(3):
         try:
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(db, f, indent=2)
-            os.replace(tmp, TRADES_DB)
+            os.replace(tmp, db_path)
             _sync_tab_databases(db)
             return
         except:

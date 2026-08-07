@@ -158,6 +158,7 @@ def sync_instruments(kite):
         _load_cached_nfo()
     except Exception as e:
         logging.error(f"Instrument sync failed: {e}")
+        _load_cached_nfo()
     finally:
         pool.shutdown(wait=False)
 

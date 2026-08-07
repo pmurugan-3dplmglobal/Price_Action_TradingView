@@ -115,7 +115,6 @@ cached_data = {
     "live_execution_index": False
 }
 _ltp_last_fetch = 0
-_last_scan_reset = ""
 
 # ──────────────────────────────────────────────
 #  PROCESS MANAGEMENT (Start/Stop Programs)
@@ -324,7 +323,7 @@ def parse_scans_for_program(log_lines, prog_id):
 # ──────────────────────────────────────────────
 
 def refresh_data():
-    global cached_data, _ltp_last_fetch, _last_scan_reset
+    global cached_data, _ltp_last_fetch
     while True:
         with data_lock:
             pos = load_positions()
@@ -344,31 +343,7 @@ def refresh_data():
                 scan_lines, anchors, abc_matches = parse_scans_for_program(log_lines, pid)
                 cached_data["scans"][pid] = scan_lines
                 cached_data["scan_summary"][pid] = {"anchors": anchors, "abc_matches": abc_matches}
-            now_ist = dt.now()
-            today_str = now_ist.strftime("%Y-%m-%d")
-            market_open = now_ist.replace(hour=9, minute=0, second=0, microsecond=0)
-            if _last_scan_reset != today_str and now_ist >= market_open:
-                _last_scan_reset = today_str
-                for f in [SCAN_DISPLAY_FILE, SCAN_DISPLAY_INDEX_FILE]:
-                    try:
-                        if os.path.exists(f):
-                            with open(f, "r") as fh:
-                                existing = json.load(fh)
-                            if existing and isinstance(existing, dict):
-                                existing["date"] = today_str
-                                existing["timestamp"] = now_ist.strftime("%Y-%m-%d %H:%M:%S")
-                                if "staged_trades" not in existing: existing["staged_trades"] = []
-                                if "carry_forward" not in existing: existing["carry_forward"] = []
-                                if "active_live" not in existing: existing["active_live"] = []
-                                existing["staged_trades"] = []
-                                with open(f, "w") as fh:
-                                    json.dump(existing, fh, indent=2)
-                                continue  # New day: clear stale staged candidates, keep carry-forward/active
-                        empty_scan = {"date": today_str, "timestamp": now_ist.strftime("%Y-%m-%d %H:%M:%S"), "staged_trades": [], "carry_forward": [], "active_live": []}
-                        with open(f, "w") as fh:
-                            json.dump(empty_scan, fh)
-                    except Exception:
-                        pass
+            today_str = dt.now().strftime("%Y-%m-%d")
             scan_display = {}
             try:
                 if os.path.exists(SCAN_DISPLAY_FILE):

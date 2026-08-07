@@ -18,8 +18,8 @@
     "strike_range": 0
   },
   "nifty50": {
-    "timeframe_entry": "3minute",
-    "timeframe_anchor": "3minute",
+    "timeframe_entry": "15minute",
+    "timeframe_anchor": "15minute",
     "lookback_days": 30,
     "scan_interval": 30,
     "risk_percent": 10,
