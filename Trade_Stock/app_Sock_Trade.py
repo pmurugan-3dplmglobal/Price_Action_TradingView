@@ -3,8 +3,9 @@ COMMON_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "comm
 if COMMON_DIR not in sys.path:
     sys.path.insert(0, COMMON_DIR)
 from datetime import datetime as dt
-from flask import Flask, render_template_string, jsonify, request, Response
+from flask import Flask, render_template_string, jsonify, request, Response, session, redirect
 import trade_db
+import dashboard_auth
 from trading_core import (
     lookup_scan_sl_target,
     derive_sl_targets_for_contract,
@@ -14,6 +15,7 @@ from trading_core import (
 )
 
 app = Flask(__name__)
+app.secret_key = dashboard_auth.get_secret_key()
 
 # ──────────────────────────────────────────────
 #  FILE PATHS & DASHBOARD CONFIG
@@ -1753,7 +1755,13 @@ HTML_TEMPLATE = """
             <span style="background:#238636;color:#ffffff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;">● Free Data Feed Active</span>
             <span style="font-size:12px;color:#c9d1d9;">TradingView & Yahoo Finance Open-Source Edition <span style="color:#8b949e;">(Zero API Key / Credentials Required)</span></span>
         </div>
-        <span style="font-size:11px;color:#8b949e;font-weight:600;">Port: 6061</span>
+        <span style="font-size:11px;color:#8b949e;font-weight:600;margin-left:12px;">Port: 6061</span>
+        <span style="font-size:11px;color:#8b949e;font-weight:600;margin-left:auto;">
+            <a href="/admin" style="color:#58a6ff;text-decoration:none;font-weight:600;">Admin</a>
+            <span style="margin:0 8px;">|</span>
+            <span style="color:#c9d1d9;">{{ user }}</span>
+            <a href="/logout" style="color:#f85149;text-decoration:none;font-weight:600;margin-left:10px;">Logout</a>
+        </span>
     </div>
 
     <div class="stats-grid">
@@ -1986,9 +1994,194 @@ HTML_TEMPLATE = """
 #  FLASK ROUTES — API Endpoints
 # ──────────────────────────────────────────────
 
+AUTH_PAGE_STYLE = """
+    body { background:#0d1117; color:#c9d1d9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; margin:0; }
+    .auth-wrap { max-width:420px; margin:80px auto; padding:24px; background:#161b22; border:1px solid #30363d; border-radius:10px; }
+    .auth-wrap h2 { margin:0 0 16px; color:#f0f6fc; font-size:20px; }
+    .auth-wrap label { display:block; font-size:12px; color:#8b949e; margin:12px 0 4px; }
+    .auth-wrap input { width:100%; box-sizing:border-box; padding:8px 10px; background:#0d1117; color:#c9d1d9; border:1px solid #30363d; border-radius:6px; font-size:14px; }
+    .auth-wrap button { width:100%; margin-top:18px; padding:9px; background:#238636; color:#fff; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; }
+    .auth-wrap button:hover { background:#2ea043; }
+    .auth-error { color:#f85149; font-size:12px; margin-top:10px; }
+    .auth-notice { color:#d29922; font-size:12px; margin-top:10px; }
+    .auth-link { display:block; text-align:center; margin-top:14px; font-size:13px; color:#58a6ff; text-decoration:none; }
+    .auth-link:hover { text-decoration:underline; }
+    table.admin-table { width:100%; border-collapse:collapse; margin-top:16px; }
+    table.admin-table th, table.admin-table td { text-align:left; padding:8px 10px; border-bottom:1px solid #30363d; font-size:13px; }
+    table.admin-table th { color:#8b949e; font-weight:600; }
+    .badge-approved { color:#3fb950; font-weight:600; }
+    .badge-pending { color:#d29922; font-weight:600; }
+    .btn-sm { padding:4px 10px; border:none; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer; }
+    .btn-approve { background:#238636; color:#fff; }
+    .btn-reject { background:#da3633; color:#fff; }
+    .btn-del { background:#6e7681; color:#fff; }
+"""
+
+def _render_auth(template):
+    return render_template_string(template)
+
+LOGIN_TEMPLATE = """
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login - Trading Control Center</title><style>""" + AUTH_PAGE_STYLE + """</style></head><body>
+<div class="auth-wrap">
+    <h2>Trading Control Center - Login</h2>
+    <form method="POST" action="/login">
+        <label>Username</label>
+        <input type="text" name="username" autocomplete="username" required>
+        <label>Password</label>
+        <input type="password" name="password" autocomplete="current-password" required>
+        <button type="submit">Sign In</button>
+    </form>
+    <div class="auth-error">{{ error }}</div>
+    <div class="auth-notice">{{ notice }}</div>
+    <a class="auth-link" href="/register">Register for access</a>
+</div>
+</body></html>
+"""
+
+REGISTER_TEMPLATE = """
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register - Trading Control Center</title><style>""" + AUTH_PAGE_STYLE + """</style></head><body>
+<div class="auth-wrap">
+    <h2>Request Access</h2>
+    <form method="POST" action="/register">
+        <label>Username</label>
+        <input type="text" name="username" autocomplete="username" required>
+        <label>Password</label>
+        <input type="password" name="password" autocomplete="new-password" required>
+        <button type="submit">Register</button>
+    </form>
+    <div class="auth-error">{{ error }}</div>
+    <div class="auth-notice">{{ notice }}</div>
+    <a class="auth-link" href="/login">Back to login</a>
+</div>
+</body></html>
+"""
+
+ADMIN_TEMPLATE = """
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin - Registered Users</title><style>""" + AUTH_PAGE_STYLE + """</style></head><body>
+<div class="auth-wrap" style="max-width:640px;">
+    <h2>Registered Users ({{ user }})</h2>
+    <table class="admin-table">
+        <thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Registered</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+        <tr>
+            <td>{{ u.username }}</td>
+            <td>{{ u.role }}</td>
+            <td class="{% if u.approved %}badge-approved{% else %}badge-pending{% endif %}">{% if u.approved %}Approved{% else %}Pending{% endif %}</td>
+            <td>{{ u.created_at }}</td>
+            <td>
+                {% if not u.approved %}
+                <form method="POST" action="/api/admin/approve" style="display:inline;">
+                    <input type="hidden" name="username" value="{{ u.username }}">
+                    <button class="btn-sm btn-approve" type="submit">Approve</button>
+                </form>
+                <form method="POST" action="/api/admin/reject" style="display:inline;">
+                    <input type="hidden" name="username" value="{{ u.username }}">
+                    <button class="btn-sm btn-reject" type="submit">Reject</button>
+                </form>
+                {% endif %}
+                <form method="POST" action="/api/admin/delete" style="display:inline;">
+                    <input type="hidden" name="username" value="{{ u.username }}">
+                    <button class="btn-sm btn-del" type="submit" onclick="return confirm('Delete {{ u.username }}?')">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <a class="auth-link" href="/" style="text-align:left;">&larr; Back to dashboard</a>
+    <a class="auth-link" href="/logout">Logout</a>
+</div>
+</body></html>
+"""
+
+@app.before_request
+def auth_gate():
+    if request.path in ("/login", "/register", "/logout"):
+        return None
+    if request.path == "/admin":
+        if not session.get("user"):
+            return redirect("/login")
+        return None
+    if request.path.startswith("/api/admin/"):
+        if not session.get("user"):
+            return jsonify({"ok": False, "error": "Login required"}), 401
+        return None
+    if not session.get("user"):
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": "Login required"}), 401
+        return redirect("/login")
+    return None
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user = dashboard_auth.verify_user(username, password)
+        if not user:
+            return _render_auth(LOGIN_TEMPLATE.replace("{{ error }}", "Invalid username or password").replace("{{ notice }}", ""))
+        if not user["approved"]:
+            return _render_auth(LOGIN_TEMPLATE.replace("{{ error }}", "Your account is awaiting admin approval").replace("{{ notice }}", ""))
+        session["user"] = user["username"]
+        session["role"] = user["role"]
+        return redirect("/")
+    return _render_auth(LOGIN_TEMPLATE.replace("{{ error }}", "").replace("{{ notice }}", ""))
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        created, err = dashboard_auth.register_user(username, password)
+        if err:
+            return _render_auth(REGISTER_TEMPLATE.replace("{{ error }}", err).replace("{{ notice }}", ""))
+        notice = "First account created (admin)." if len(dashboard_auth.list_users()) == 1 else "Registration submitted. Awaiting admin approval."
+        return _render_auth(LOGIN_TEMPLATE.replace("{{ error }}", "").replace("{{ notice }}", notice + " You can now sign in."))
+    return _render_auth(REGISTER_TEMPLATE.replace("{{ error }}", "").replace("{{ notice }}", ""))
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/login")
+
+@app.route("/admin")
+def admin_page():
+    return render_template_string(ADMIN_TEMPLATE, user=session.get("user", ""), users=dashboard_auth.list_users())
+
+@app.route("/api/admin/approve", methods=["POST"])
+def admin_approve():
+    if session.get("role") != "admin":
+        return jsonify({"ok": False, "error": "Admin only"}), 403
+    dashboard_auth.approve_user(request.form.get("username", ""))
+    return redirect("/admin")
+
+@app.route("/api/admin/reject", methods=["POST"])
+def admin_reject():
+    if session.get("role") != "admin":
+        return jsonify({"ok": False, "error": "Admin only"}), 403
+    dashboard_auth.reject_user(request.form.get("username", ""))
+    return redirect("/admin")
+
+@app.route("/api/admin/delete", methods=["POST"])
+def admin_delete():
+    if session.get("role") != "admin":
+        return jsonify({"ok": False, "error": "Admin only"}), 403
+    dashboard_auth.delete_user(request.form.get("username", ""))
+    return redirect("/admin")
+
+@app.route("/api/admin/users", methods=["GET"])
+def admin_users():
+    if session.get("role") != "admin":
+        return jsonify({"ok": False, "error": "Admin only"}), 403
+    return jsonify({"ok": True, "users": dashboard_auth.list_users()})
+
 @app.route("/")
 def dashboard():
-    return render_template_string(HTML_TEMPLATE, refresh=REFRESH_SECONDS, programs=PROGRAMS)
+    return render_template_string(HTML_TEMPLATE, refresh=REFRESH_SECONDS, programs=PROGRAMS, user=session.get("user", ""), role=session.get("role", ""))
 
 @app.route("/api/status")
 def api_status():

@@ -7,3 +7,5 @@ input/kite_access_token.txt
 .DS_Store
 *.log
 scratch/
+common/dashboard_users.json
+common/dashboard_secret_key.txt

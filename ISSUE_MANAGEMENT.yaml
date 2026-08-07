@@ -613,20 +613,6 @@ issues:
       Options Dashboard (Port 6060) Scan tab Entry column displayed the underlying spot price (e.g., POWERGRID 271.80) instead of the option strike price (265) for staged contracts like POWERGRID26AUG265CE.
     root_cause: |
       write_scan_display_data build_trade in common/trading_core.py did not serialize the strike field, and the dashboard tradeRow rendered entry_spot.
-    resolution: |
-      1. Updated top summary cards to display Staged Setups, Scanned Setups, Data Feed Status (100%), and Open-Source Engine (ACTIVE).
-      2. Focused Today's Scan tab strictly on open-source market scanning and setup analysis across both dashboards.
-    status: RESOLVED
-
-  - id: ISSUE-024
-    title: Option Scan Tab Shows Spot Price Instead of Strike Price in Entry Column
-    severity: LOW
-    category: Dashboard UX
-    date_reported: "2026-08-07"
-    symptom: |
-      Options Dashboard (Port 6060) Scan tab Entry column displayed the underlying spot price (e.g., POWERGRID 271.80) instead of the option strike price (265) for staged contracts like POWERGRID26AUG265CE.
-    root_cause: |
-      write_scan_display_data build_trade in common/trading_core.py did not serialize the strike field, and the dashboard tradeRow rendered entry_spot.
     affected_files:
       - common/trading_core.py
       - Trade_Option/app_option_Trade.py
@@ -650,4 +636,25 @@ issues:
       - ISSUE_MANAGEMENT.yaml
     resolution: |
       Removed stock_scan_file cross-workspace import from Trade_Option/app_option_Trade.py so Stock Scans (Port 6061) and Option Scans (Port 6060) remain 100% separate.
+    status: RESOLVED
+
+  - id: ISSUE-026
+    title: Dashboards Exposed Without Authentication on Public Network
+    severity: HIGH
+    category: Security & Access Control
+    date_reported: "2026-08-07"
+    symptom: |
+      Both dashboards (app_option_Trade.py:6060 and app_Sock_Trade.py:6061) bound to 0.0.0.0 with no authentication, allowing anyone on the network / internet (e.g., http://140.245.197.71:6060) to view charts and call all /api/* routes (start engines, clear logs, etc.).
+    root_cause: |
+      app.run(host="0.0.0.0", ...) served pages and API routes with no login gate and no session management.
+    affected_files:
+      - common/dashboard_auth.py (new)
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Added shared auth helper common/dashboard_auth.py: password-hashed user store (common/dashboard_users.json), persistent session secret key (common/dashboard_secret_key.txt), register/verify/approve/reject/delete/list APIs.
+      2. Added login_required @app.before_request gate in both dashboards covering all pages and /api/* routes; unauthenticated browser requests redirect to /login, API requests return 401.
+      3. Added /login, /register, /logout, /admin pages and /api/admin/* endpoints (Approve/Reject/Delete). First registered account becomes admin; subsequent registrations are marked Pending until admin approves on /admin.
+      4. Added Admin | user | Logout links to both dashboard headers.
     status: RESOLVED
