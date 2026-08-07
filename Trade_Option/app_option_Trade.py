@@ -34,7 +34,7 @@ SCAN_DISPLAY_INDEX_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_disp
 LIVE_EXECUTION_FLAG = os.path.join(BASE_DIR, "input", "nifty50_live.flag")
 LIVE_EXECUTION_FLAG_INDEX = os.path.join(BASE_DIR, "input", "index_live.flag")
 
-DASHBOARD_PORT = 6060
+DASHBOARD_PORT = int(os.environ.get("PORT", 6060))
 REFRESH_SECONDS = 1
 ACTIVE_EDIT_LOCKS = set()
 
