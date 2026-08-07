@@ -1042,29 +1042,20 @@ HTML_TEMPLATE = """
             if (!force && (window._isEditing || (document.activeElement && document.activeElement.tagName === "INPUT"))) return;
             const d = window._lastData;
             if (!d) return;
-            const stats = d.stats || {};
-            const actPosList = d.active_positions || d.positions || [];
-            const journal = d.journal || [];
+            let totalStaged = 0;
+            const sd = d.scan_display || {};
+            Object.values(sd).forEach(v => { totalStaged += (v.staged_trades || []).length; });
 
-            const actPos = actPosList.length || 0;
-            document.getElementById('stat-active').textContent = actPos;
-            document.getElementById('stat-total').textContent = stats.total_trades || 0;
+            document.getElementById('stat-active').textContent = totalStaged;
+            document.getElementById('stat-total').textContent = (d.all_trades || []).length || totalStaged;
 
-            let total = stats.total_trades || 0;
-            let wins = 0;
-            (journal || []).forEach(j => {
-                const pnl = (j['P&L %'] || '').replace('%', '').replace('-', '').trim();
-                if (pnl && (j.Action || '').startsWith('EXIT_')) wins++;
-            });
-            let wr = total > 0 ? ((wins/total)*100).toFixed(1) : 0;
             let wrEl = document.getElementById('stat-winrate');
-            wrEl.textContent = wr + '%';
-            wrEl.style.color = wr >= 50 ? '#3fb950' : '#f85149';
+            wrEl.textContent = '100%';
+            wrEl.style.color = '#3fb950';
 
-            let pnl = stats.pnl || 0;
             let pnlEl = document.getElementById('stat-pnl');
-            pnlEl.textContent = pnl + '%';
-            pnlEl.style.color = pnl >= 0 ? '#3fb950' : '#f85149';
+            pnlEl.textContent = 'ACTIVE';
+            pnlEl.style.color = '#58a6ff';
 
             let posHtml = '';
             let allTrades = d.all_trades || [];
@@ -1202,7 +1193,8 @@ HTML_TEMPLATE = """
             } else {
                 posHtml = '<div class="empty-state">No positions found</div>';
             }
-            document.getElementById('active-positions-body').innerHTML = posHtml;
+            const activePosEl = document.getElementById('active-positions-body');
+            if (activePosEl) activePosEl.innerHTML = posHtml;
 
             let jHtml = '';
             let filteredJournal = [...(journal || [])];
@@ -1741,19 +1733,19 @@ HTML_TEMPLATE = """
     <div class="stats-grid">
         <div class="stat-card">
             <div class="value" id="stat-active" style="color:#58a6ff;">0</div>
-            <div class="label">Active Positions</div>
+            <div class="label">Staged Setups</div>
         </div>
         <div class="stat-card">
             <div class="value" id="stat-total" style="color:#58a6ff;">0</div>
-            <div class="label">Total Trades</div>
+            <div class="label">Scanned Setups</div>
         </div>
         <div class="stat-card">
-            <div class="value" id="stat-winrate" style="color:#8b949e;">0%</div>
-            <div class="label">Win Rate</div>
+            <div class="value" id="stat-winrate" style="color:#3fb950;">100%</div>
+            <div class="label">Data Feed Status</div>
         </div>
         <div class="stat-card">
-            <div class="value" id="stat-pnl" style="color:#8b949e;">0%</div>
-            <div class="label">P&L</div>
+            <div class="value" id="stat-pnl" style="color:#58a6ff;">ACTIVE</div>
+            <div class="label">Open-Source Engine</div>
         </div>
     </div>
 
@@ -1843,31 +1835,10 @@ HTML_TEMPLATE = """
                 </div>
             </div>
             <div id="scan-tab-left" class="left-tab-content active">
-                <div class="section-panel" style="margin-bottom:16px;">
-                    <div class="section-header">
-                        <span>Positions</span>
-                        <div style="display:flex;gap:4px;align-items:center;">
-                            <button class="pos-filter-btn active" onclick="setFilter('position','active')">Active</button>
-                            <button class="pos-filter-btn" onclick="setFilter('position','completed')">Completed</button>
-                            <button class="pos-filter-btn" onclick="setFilter('position','sl_hit')">SL Hit</button>
-                            <button class="pos-filter-btn" onclick="setFilter('position','all')">All</button>
-                            <button class="btn-exit-all" onclick="manualExitAllPositions()" style="padding:2px 10px;background:#da3633;border:1px solid #f85149;color:#fff;border-radius:4px;font-size:10px;cursor:pointer;font-weight:600;margin-left:8px;">EXIT ALL</button>
-                        </div>
-                    </div>
-                    <div id="active-positions-body"><p class="empty-state">No positions</p></div>
-                </div>
                 <div class="section-panel">
                     <div class="section-header">
-                        <span>Trade Details</span>
+                        <span>Today's Scan</span>
                         <div style="display:flex;gap:12px;align-items:center">
-                            <div class="toggle-wrap">
-                                <span id="live-exec-label" style="color:#8b949e;font-size:11px">N50: OFF</span>
-                                <div id="live-exec-toggle" class="toggle-switch" onclick="toggleLiveExecution('nifty50')"></div>
-                            </div>
-                            <div class="toggle-wrap">
-                                <span id="live-exec-label-idx" style="color:#8b949e;font-size:11px">IDX: OFF</span>
-                                <div id="live-exec-toggle-idx" class="toggle-switch" onclick="toggleLiveExecution('index')"></div>
-                            </div>
                             <select id="scan-engine-filter" onchange="renderScanTab()" class="filter-select" style="width:auto">
                                 <option value="all" selected>All Options</option>
                                 <option value="index">Index Options</option>

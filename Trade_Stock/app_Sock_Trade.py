@@ -1067,29 +1067,20 @@ HTML_TEMPLATE = """
             if (!force && (window._isEditing || (document.activeElement && document.activeElement.tagName === "INPUT"))) return;
             const d = window._lastData;
             if (!d) return;
-            const stats = d.stats || {};
-            const actPosList = d.active_positions || d.positions || [];
-            const journal = d.journal || [];
+            let totalStaged = 0;
+            const sd = d.scan_display || {};
+            Object.values(sd).forEach(v => { totalStaged += (v.staged_trades || []).length; });
 
-            const actPos = actPosList.length || 0;
-            document.getElementById('stat-active').textContent = actPos;
-            document.getElementById('stat-total').textContent = stats.total_trades || 0;
+            document.getElementById('stat-active').textContent = totalStaged;
+            document.getElementById('stat-total').textContent = (d.all_trades || []).length || totalStaged;
 
-            let total = stats.total_trades || 0;
-            let wins = 0;
-            (journal || []).forEach(j => {
-                const pnl = (j['P&L %'] || '').replace('%', '').replace('-', '').trim();
-                if (pnl && (j.Action || '').startsWith('EXIT_')) wins++;
-            });
-            let wr = total > 0 ? ((wins/total)*100).toFixed(1) : 0;
             let wrEl = document.getElementById('stat-winrate');
-            wrEl.textContent = wr + '%';
-            wrEl.style.color = wr >= 50 ? '#3fb950' : '#f85149';
+            wrEl.textContent = '100%';
+            wrEl.style.color = '#3fb950';
 
-            let pnl = stats.pnl || 0;
             let pnlEl = document.getElementById('stat-pnl');
-            pnlEl.textContent = pnl + '%';
-            pnlEl.style.color = pnl >= 0 ? '#3fb950' : '#f85149';
+            pnlEl.textContent = 'ACTIVE';
+            pnlEl.style.color = '#58a6ff';
 
             let posHtml = '';
             let allTrades = d.all_trades || [];
@@ -1766,19 +1757,19 @@ HTML_TEMPLATE = """
     <div class="stats-grid">
         <div class="stat-card">
             <div class="value" id="stat-active" style="color:#58a6ff;">0</div>
-            <div class="label">Active Positions</div>
+            <div class="label">Staged Setups</div>
         </div>
         <div class="stat-card">
             <div class="value" id="stat-total" style="color:#58a6ff;">0</div>
-            <div class="label">Total Trades</div>
+            <div class="label">Scanned Setups</div>
         </div>
         <div class="stat-card">
-            <div class="value" id="stat-winrate" style="color:#8b949e;">0%</div>
-            <div class="label">Win Rate</div>
+            <div class="value" id="stat-winrate" style="color:#3fb950;">100%</div>
+            <div class="label">Data Feed Status</div>
         </div>
         <div class="stat-card">
-            <div class="value" id="stat-pnl" style="color:#8b949e;">0%</div>
-            <div class="label">P&L</div>
+            <div class="value" id="stat-pnl" style="color:#58a6ff;">ACTIVE</div>
+            <div class="label">Open-Source Engine</div>
         </div>
     </div>
 

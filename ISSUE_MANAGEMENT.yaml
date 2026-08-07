@@ -586,4 +586,23 @@ issues:
       Combined Positions panel and Trade Details / Scan Results panel cleanly inside a single id="scan-tab-left" container in Trade_Option/app_option_Trade.py. Validated live rendering of 42+ staged trades across Nifty 50 and Index Options.
     status: RESOLVED
 
+  - id: ISSUE-023
+    title: Pure Open-Source Scanner UI Refactoring & Stat Card Streamlining
+    severity: ENHANCEMENT
+    category: Dashboard UX & Open Source Integration
+    date_reported: "2026-08-07"
+    symptom: |
+      Dashboard displayed unused broker position counters ('Active Positions', 'Win Rate 0%', 'P&L 0%') in open-source scanning mode.
+    root_cause: |
+      Legacy broker trading stats were preserved from broker edition, cluttering generic open-source scanning dashboards.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Updated top summary cards to display Staged Setups, Scanned Setups, Data Feed Status (100%), and Open-Source Engine (ACTIVE).
+      2. Focused Today's Scan tab strictly on open-source market scanning and setup analysis across both dashboards.
+    status: RESOLVED
+
+
 
