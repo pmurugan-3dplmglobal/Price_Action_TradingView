@@ -82,7 +82,8 @@ JOURNAL_FILE = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
 class FlushFileHandler(logging.FileHandler):
     def emit(self, record):
         super().emit(record)
-        self.flush()
+        if record.levelno >= logging.WARNING or "MATCH" in record.getMessage() or "ANCHOR" in record.getMessage():
+            self.flush()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE_PATH = os.path.join(BASE_DIR, "output", "logs", "bull_index_trade_engine.log")

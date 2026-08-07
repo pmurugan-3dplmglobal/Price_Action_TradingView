@@ -35,7 +35,7 @@ LIVE_EXECUTION_FLAG = os.path.join(BASE_DIR, "input", "nifty50_live.flag")
 LIVE_EXECUTION_FLAG_INDEX = os.path.join(BASE_DIR, "input", "index_live.flag")
 
 DASHBOARD_PORT = int(os.environ.get("PORT", 6061))
-REFRESH_SECONDS = 1
+REFRESH_SECONDS = 3
 ACTIVE_EDIT_LOCKS = set()
 
 PROGRAMS = {
@@ -222,10 +222,17 @@ def load_positions():
     except:
         return {}
 
+_journal_cache = (0, 0, [])
+
 def load_journal():
-    rows = []
+    global _journal_cache
     if os.path.exists(JOURNAL_FILE):
         try:
+            stat = os.stat(JOURNAL_FILE)
+            mtime, size = stat.st_mtime, stat.st_size
+            if _journal_cache[0] == mtime and _journal_cache[1] == size:
+                return _journal_cache[2]
+            rows = []
             with open(JOURNAL_FILE, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(f, delimiter="\t")
                 seen = set()
@@ -234,9 +241,12 @@ def load_journal():
                     if key not in seen:
                         seen.add(key)
                         rows.append(row)
+            res = rows[-200:]
+            _journal_cache = (mtime, size, res)
+            return res
         except Exception:
             pass
-    return rows[-200:]
+    return []
 
 def get_best_log_file(filepath):
     if not filepath:
@@ -255,14 +265,24 @@ def get_best_log_file(filepath):
         return existing[0][1]
     return filepath
 
+_file_read_cache = {}
+
 def tail_log(filepath, n=200):
     best_file = get_best_log_file(filepath)
     if not best_file or not os.path.exists(best_file):
         return []
     try:
+        stat = os.stat(best_file)
+        mtime, size = stat.st_mtime, stat.st_size
+        cached = _file_read_cache.get(best_file)
+        if cached and cached[0] == mtime and cached[1] == size:
+            return cached[2]
+
         with open(best_file, encoding="utf-8") as f:
             lines = f.readlines()
-        return lines[-n:]
+        tail = lines[-n:]
+        _file_read_cache[best_file] = (mtime, size, tail)
+        return tail
     except Exception:
         return []
 

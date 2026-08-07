@@ -1105,7 +1105,19 @@ def fetch_open_source_candles(token_or_sym, timeframe_str, from_date=None, to_da
 
     return resample_timeframe(df, timeframe_str)
 
+_candle_cache = {}
+_candle_cache_lock = threading.Lock()
+_CANDLE_CACHE_TTL = 15
+
 def fetch_and_resample_candles(kite, token, from_date, to_date, timeframe_str):
+    cache_key = (str(token), str(from_date), str(to_date), str(timeframe_str).lower())
+    now = time.time()
+    with _candle_cache_lock:
+        if cache_key in _candle_cache:
+            cached_df, ts = _candle_cache[cache_key]
+            if now - ts < _CANDLE_CACHE_TTL and cached_df is not None:
+                return cached_df.copy()
+
     acc_token = getattr(kite, "access_token", "") if kite else ""
     if kite is not None and hasattr(kite, "historical_data") and acc_token and acc_token != "open_source_token":
         fetch_tf = get_fetch_timeframe(timeframe_str)
@@ -1115,11 +1127,17 @@ def fetch_and_resample_candles(kite, token, from_date, to_date, timeframe_str):
             raw = kite.historical_data(token, from_date, to_date, fetch_tf)
             if raw:
                 df = pd.DataFrame(raw)
-                return resample_timeframe(df, timeframe_str)
+                res = resample_timeframe(df, timeframe_str)
+                with _candle_cache_lock:
+                    _candle_cache[cache_key] = (res.copy(), now)
+                return res
         except Exception:
             pass
 
-    return fetch_open_source_candles(token, timeframe_str, from_date, to_date)
+    res = fetch_open_source_candles(token, timeframe_str, from_date, to_date)
+    with _candle_cache_lock:
+        _candle_cache[cache_key] = (res.copy(), now)
+    return res
 
 def fetch_option_data(kite, token, from_date, to_date, primary_tf, fallback_tf, min_candles=5):
     df = fetch_and_resample_candles(kite, token, from_date, to_date, primary_tf)
