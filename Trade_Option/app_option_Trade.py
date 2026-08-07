@@ -1843,7 +1843,7 @@ HTML_TEMPLATE = """
                 </div>
             </div>
             <div id="scan-tab-left" class="left-tab-content active">
-                <div class="section-panel">
+                <div class="section-panel" style="margin-bottom:16px;">
                     <div class="section-header">
                         <span>Positions</span>
                         <div style="display:flex;gap:4px;align-items:center;">
@@ -1856,8 +1856,6 @@ HTML_TEMPLATE = """
                     </div>
                     <div id="active-positions-body"><p class="empty-state">No positions</p></div>
                 </div>
-            </div>
-            <div id="scan-tab-left" class="left-tab-content">
                 <div class="section-panel">
                     <div class="section-header">
                         <span>Trade Details</span>

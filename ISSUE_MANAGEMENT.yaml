@@ -570,3 +570,20 @@ issues:
       2. Updated derive_sl_targets_for_contract to calculate option targets via 10% Max Loss SL rule and Negation R:R multipliers (1.88, 2.50, 3.50) without overwriting option price with spot index price.
     status: RESOLVED
 
+  - id: ISSUE-022
+    title: Fix Empty Scan Tab Caused by Duplicate scan-tab-left DOM Container ID
+    severity: HIGH
+    category: Dashboard UX & DOM Rendering
+    date_reported: "2026-08-07"
+    symptom: |
+      Options Dashboard Scan Tab (Port 6060) showed 'No positions found' instead of rendering the 42+ active & staged trades table.
+    root_cause: |
+      HTML template contained duplicate id="scan-tab-left" div elements. The first div contained the Positions table, causing document.getElementById('scan-tab-left') to select and display Positions while hiding the Scan Results table div.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      Combined Positions panel and Trade Details / Scan Results panel cleanly inside a single id="scan-tab-left" container in Trade_Option/app_option_Trade.py. Validated live rendering of 42+ staged trades across Nifty 50 and Index Options.
+    status: RESOLVED
+
+
