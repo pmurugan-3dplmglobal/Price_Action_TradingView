@@ -1781,15 +1781,21 @@ def write_scan_display_data(staged, active, display_file, engine_name=None):
         def _trade_key(t):
             return str(t.get("contract") or t.get("symbol") or "").replace(" ", "").upper()
 
+        def _clean_ts(s):
+            return str(s or "").replace(" ", "").replace("-", "").replace(":", "")
+
         cleared_at = None
         preserved = []
-        staged_list = new_staged if new_staged else []
+        if cleared_at:
+            c_time_clean = _clean_ts(cleared_at)
+            staged_list = [t for t in preserved if _clean_ts(t.get("entry_time", "")) > c_time_clean] + (new_staged or [])
+        else:
+            staged_list = (preserved or []) + (new_staged or [])
 
-        # Deduplicate staged trades by unique contract key: keep freshest entry_time & highest RR
         contract_map = {}
         for t in staged_list:
             key = _trade_key(t)
-            if not key or key in active_keys:
+            if not key:
                 continue
             if key not in contract_map:
                 contract_map[key] = t

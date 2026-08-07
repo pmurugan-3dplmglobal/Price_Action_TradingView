@@ -9,8 +9,8 @@
   "failsafe_start_time": "09:45",
   "emergency_buffer_pct": 0.15,
   "index": {
-    "timeframe_entry": "15minute",
-    "timeframe_anchor": "15minute",
+    "timeframe_entry": "3minute",
+    "timeframe_anchor": "3minute",
     "lookback_days": 30,
     "scan_interval": 15,
     "risk_percent": 1,
@@ -18,8 +18,8 @@
     "strike_range": 0
   },
   "nifty50": {
-    "timeframe_entry": "15minute",
-    "timeframe_anchor": "15minute",
+    "timeframe_entry": "30minute",
+    "timeframe_anchor": "30minute",
     "lookback_days": 30,
     "scan_interval": 30,
     "risk_percent": 10,
