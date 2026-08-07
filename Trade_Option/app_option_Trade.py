@@ -908,7 +908,14 @@ HTML_TEMPLATE = """
             let scanHtml = '';
             const colHeaders = '<th onclick="sortTable(this,0)">Symbol</th><th onclick="sortTable(this,1)">Contract</th><th onclick="sortTable(this,2)">Side</th><th onclick="sortTable(this,3)">Entry</th><th onclick="sortTable(this,4)">SL</th><th onclick="sortTable(this,5)">T1</th><th onclick="sortTable(this,6)">T2</th><th onclick="sortTable(this,7)">T3</th><th onclick="sortTable(this,8)">AncherT</th><th onclick="sortTable(this,9)">EntryTime</th><th onclick="sortTable(this,10)">Result</th><th onclick="sortTable(this,11)">CF</th><th onclick="sortTable(this,12)">RR</th><th style="text-align:center">Action</th>';
             function tradeRow(t, resultBadge, eng) {
-                const entry = t.entry_spot !== undefined && t.entry_spot !== null ? parseFloat(t.entry_spot).toFixed(2) : '-';
+                let entry = t.strike !== undefined && t.strike !== null && t.strike !== '' ? t.strike : '-';
+                if (entry === '-') {
+                    const m = String(t.contract || '').match(/(\\d+)(CE|PE)$/);
+                    if (m) {
+                        const sym = String(t.symbol || '').toUpperCase();
+                        entry = (sym === 'NIFTY' || sym === 'BANKNIFTY' || sym === 'SENSEX') ? m[1].slice(-5) : m[1];
+                    }
+                }
                 const sl = t.current_sl !== undefined && t.current_sl !== null ? parseFloat(t.current_sl).toFixed(2) : '-';
                 const t1v = t.t1 !== undefined && t.t1 !== null ? t.t1 : '-';
                 const t2v = t.t2 !== undefined && t.t2 !== null ? t.t2 : '-';
