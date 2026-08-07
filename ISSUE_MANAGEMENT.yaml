@@ -658,3 +658,22 @@ issues:
       3. Added /login, /register, /logout, /admin pages and /api/admin/* endpoints (Approve/Reject/Delete). First registered account becomes admin; subsequent registrations are marked Pending until admin approves on /admin.
       4. Added Admin | user | Logout links to both dashboard headers.
     status: RESOLVED
+
+  - id: ISSUE-027
+    title: Non-Admin Users Could View Admin User Management Page
+    severity: HIGH
+    category: Security & Access Control
+    date_reported: "2026-08-07"
+    symptom: |
+      Any logged-in user (non-admin, e.g., role 'user') could open /admin and see the registered-users list; the page only checked login state, not admin role.
+    root_cause: |
+      The @app.before_request auth_gate for the /admin path only verified session login, and admin_page() rendered without checking session['role'] == 'admin'.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Updated auth_gate in both dashboards to require session['role'] == 'admin' for the /admin path (non-admins get 403).
+      2. Added an inline role guard in admin_page() returning 403 for non-admin roles (defense in depth).
+      3. Verified: admin /admin -> 200, non-admin /admin -> 403 {"error":"Admin only"}.
+    status: RESOLVED

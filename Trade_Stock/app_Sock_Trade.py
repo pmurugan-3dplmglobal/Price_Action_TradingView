@@ -2105,6 +2105,8 @@ def auth_gate():
     if request.path == "/admin":
         if not session.get("user"):
             return redirect("/login")
+        if session.get("role") != "admin":
+            return jsonify({"ok": False, "error": "Admin only"}), 403
         return None
     if request.path.startswith("/api/admin/"):
         if not session.get("user"):
@@ -2150,6 +2152,8 @@ def logout():
 
 @app.route("/admin")
 def admin_page():
+    if session.get("role") != "admin":
+        return jsonify({"ok": False, "error": "Admin only"}), 403
     return render_template_string(ADMIN_TEMPLATE, user=session.get("user", ""), users=dashboard_auth.list_users())
 
 @app.route("/api/admin/approve", methods=["POST"])
