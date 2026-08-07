@@ -2537,6 +2537,10 @@ def api_analyze_trade():
         if not symbol:
             return jsonify({"ok": False, "error": "Valid Symbol or Contract Name required"}), 400
 
+        is_option_contract = ("CE" in symbol or "PE" in symbol) and not symbol.startswith("^")
+        if is_option_contract and entry_price <= 0:
+            return jsonify({"ok": False, "error": f"Please enter your Option Purchase Price (₹) for '{symbol}' in the Entry Price box (e.g. 1.60, 12.00, 50.00)."}), 400
+
         timeframe_entry = timeframe
         timeframe_anchor = "30minute" if engine == "nifty50" else "15minute"
         if timeframe in ["day", "week", "4hr", "1hr", "75min"]:

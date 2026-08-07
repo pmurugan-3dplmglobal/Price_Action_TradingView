@@ -836,8 +836,8 @@ def scan_anchor_bcd_breakout(df_entry, df_anchor):
         candles_since_d = len(df_entry) - 1 - d_idx
         latest_close = float(df_entry.iloc[-1]['close'])
 
-        # Rule 1: Discard stale setups older than 60 candles to wait for new setup in next cycle
-        if candles_since_d > 60:
+        # Rule 1: Discard stale setups older than the full scan window (full lookback kept for 30-day pattern review)
+        if candles_since_d > len(df_entry):
             continue
 
         # Rule 2: Discard if current price closed below SL floor line
@@ -1513,6 +1513,8 @@ def derive_sl_targets_for_contract(kite, contract, entry_price, timeframe_entry=
             except Exception as q_err:
                 logging.warning(f"Kite quote error for {quote_key}: {q_err}")
 
+        is_option = ("CE" in contract_str or "PE" in contract_str) and not contract_str.startswith("^")
+
         df_e, df_a = None, None
         if kite and token:
             try:
@@ -1525,8 +1527,9 @@ def derive_sl_targets_for_contract(kite, contract, entry_price, timeframe_entry=
                 df_e = fetch_and_resample_candles(None, contract, from_d, to_d, timeframe_entry)
                 df_a = fetch_and_resample_candles(None, contract, from_d, to_d, timeframe_anchor)
                 if (not ep or ep <= 0) and df_a is not None and not df_a.empty:
-                    ep = float(df_a.iloc[-1]["close"])
-                    max_loss_sl = round(ep * 0.90, 2) if ep > 0 else 0.0
+                    if not is_option:
+                        ep = float(df_a.iloc[-1]["close"])
+                        max_loss_sl = round(ep * 0.90, 2) if ep > 0 else 0.0
             except Exception as fetch_err:
                 logging.warning(f"Open-source candle fetch error for {contract}: {fetch_err}")
 
@@ -1534,7 +1537,14 @@ def derive_sl_targets_for_contract(kite, contract, entry_price, timeframe_entry=
         t1, t2, t3 = None, None, None
         pattern_name = "NEGATION_DERIVED_MANUAL"
 
-        if df_a is not None and len(df_a) >= 5:
+        if is_option and ep > 0:
+            sl_val = round(ep * 0.90, 2)
+            risk = round(ep - sl_val, 2)
+            t1 = round(ep + (1.88 * risk), 2)
+            t2 = round(ep + (2.50 * risk), 2)
+            t3 = round(ep + (3.50 * risk), 2)
+            pattern_name = "NEGATION_OPTION_RULE"
+        elif df_a is not None and len(df_a) >= 5:
             res = scan_anchor_bcd_breakout(df_e if df_e is not None else df_a, df_a)
             if res:
                 pattern_name = res.get("Pattern", "ABC_BREAKOUT")
@@ -2067,30 +2077,53 @@ def scan_symbol(kite, symbol, config, from_entry, to_entry, from_anchor, to_anch
     pe_map = {p["strike"]: p for p in pe_list}
     open_source = kite is None or getattr(kite, "access_token", "") == "open_source_token"
     fetch_id = symbol if open_source else None
+    shared_dfs = {}
+    if open_source:
+        try:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                tasks = {
+                    pool.submit(fetch_and_resample_candles, kite, symbol, from_entry, to_entry, timeframe_entry): ("entry", "entry"),
+                }
+                if not (timeframe_entry == timeframe_anchor and from_entry == from_anchor and to_entry == to_anchor):
+                    tasks[pool.submit(fetch_and_resample_candles, kite, symbol, from_anchor, to_anchor, timeframe_anchor)] = ("anchor", "anchor")
+                for f in as_completed(tasks):
+                    tag, _ = tasks[f]
+                    try:
+                        shared_dfs[tag] = pd.DataFrame(f.result())
+                    except Exception as e:
+                        logging.warning(f"Open-source data failed for {symbol}: {e}")
+                        shared_dfs[tag] = pd.DataFrame()
+        except Exception as e:
+            logging.warning(f"Open-source data failed for {symbol}: {e}")
     for strike in sorted(set(ce_map) & set(pe_map)):
         ce = ce_map[strike]
         pe = pe_map[strike]
         same_tf = timeframe_entry == timeframe_anchor and from_entry == from_anchor and to_entry == to_anchor
         dfs = {}
-        try:
-            with ThreadPoolExecutor(max_workers=2) as pool:
-                tasks = {
-                    pool.submit(fetch_and_resample_candles, kite, fetch_id or ce["token"], from_entry, to_entry, timeframe_entry): ("ce", "entry"),
-                    pool.submit(fetch_and_resample_candles, kite, fetch_id or pe["token"], from_entry, to_entry, timeframe_entry): ("pe", "entry"),
-                }
-                if not same_tf:
-                    tasks[pool.submit(fetch_and_resample_candles, kite, fetch_id or ce["token"], from_anchor, to_anchor, timeframe_anchor)] = ("ce", "anchor")
-                    tasks[pool.submit(fetch_and_resample_candles, kite, fetch_id or pe["token"], from_anchor, to_anchor, timeframe_anchor)] = ("pe", "anchor")
-                for f in as_completed(tasks):
-                    tag, kind = tasks[f]
-                    try:
-                        dfs[(tag, kind)] = pd.DataFrame(f.result())
-                    except Exception as e:
-                        logging.warning(f"{tag} {kind} failed for {symbol} {strike}: {e}")
-                        dfs[(tag, kind)] = pd.DataFrame()
-        except Exception as e:
-            logging.warning(f"Contract data failed for {symbol} {strike}: {e}")
-            continue
+        if open_source:
+            for kind in ("ce", "pe"):
+                dfs[(kind, "entry")] = shared_dfs.get("entry", pd.DataFrame()).copy()
+                dfs[(kind, "anchor")] = shared_dfs.get("anchor", shared_dfs.get("entry", pd.DataFrame())).copy()
+        else:
+            try:
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    tasks = {
+                        pool.submit(fetch_and_resample_candles, kite, ce["token"], from_entry, to_entry, timeframe_entry): ("ce", "entry"),
+                        pool.submit(fetch_and_resample_candles, kite, pe["token"], from_entry, to_entry, timeframe_entry): ("pe", "entry"),
+                    }
+                    if not same_tf:
+                        tasks[pool.submit(fetch_and_resample_candles, kite, ce["token"], from_anchor, to_anchor, timeframe_anchor)] = ("ce", "anchor")
+                        tasks[pool.submit(fetch_and_resample_candles, kite, pe["token"], from_anchor, to_anchor, timeframe_anchor)] = ("pe", "anchor")
+                    for f in as_completed(tasks):
+                        tag, kind = tasks[f]
+                        try:
+                            dfs[(tag, kind)] = pd.DataFrame(f.result())
+                        except Exception as e:
+                            logging.warning(f"{tag} {kind} failed for {symbol} {strike}: {e}")
+                            dfs[(tag, kind)] = pd.DataFrame()
+            except Exception as e:
+                logging.warning(f"Contract data failed for {symbol} {strike}: {e}")
+                continue
         if same_tf:
             dfs[("ce", "anchor")] = dfs.get(("ce", "entry"), pd.DataFrame())
             dfs[("pe", "anchor")] = dfs.get(("pe", "entry"), pd.DataFrame())

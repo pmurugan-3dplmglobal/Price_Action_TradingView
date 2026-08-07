@@ -550,3 +550,23 @@ issues:
       2. Added open-source Yahoo Finance candle fetch fallback in derive_sl_targets_for_contract when kite session is None.
       3. Validated 100% credential-less Negation Theory target derivation across stock spot and options contracts.
     status: RESOLVED
+
+  - id: ISSUE-021
+    title: Option Contract Entry Price Validation & Dedicated Negation Option Rule
+    severity: MEDIUM
+    category: Dashboard UX & Target Calculation
+    date_reported: "2026-08-07"
+    symptom: |
+      Analyzing an option contract name (e.g., SENSEX2680678200PE) without providing an entry price caused the engine to default to the underlying spot index price (e.g. ₹78,954.76), confusing option prices with spot index values.
+    root_cause: |
+      Open-source candle fetch mapped option symbol strings to underlying spot tickers, and derive_sl_targets_for_contract defaulted missing entry prices to spot candle close.
+    affected_files:
+      - common/trading_core.py
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Added UI validation in /api/analyze-trade to prompt user for option purchase price if entering option contract names (e.g., CE/PE contracts).
+      2. Updated derive_sl_targets_for_contract to calculate option targets via 10% Max Loss SL rule and Negation R:R multipliers (1.88, 2.50, 3.50) without overwriting option price with spot index price.
+    status: RESOLVED
+
