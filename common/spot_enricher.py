@@ -89,11 +89,13 @@ def evaluate_spot_trend_and_t1(kite, underlying_symbol, timeframe="day"):
         sma20 = float(df_raw['close'].tail(20).mean())
         if latest_close >= sma20:
             trend = "BULL"
-            t1, _, _ = find_profit_targets(df_raw, latest_close)
+            fallback_sl = float(df_raw['low'].tail(20).min())
+            t1, _, _ = find_profit_targets(df_raw, latest_close, stop_loss=fallback_sl)
             t1_val = round(float(t1), 2) if t1 else "N/A"
         else:
             trend = "BEAR"
-            t1, _, _ = find_profit_targets_bearish(df_raw, latest_close)
+            fallback_sl = float(df_raw['high'].tail(20).max())
+            t1, _, _ = find_profit_targets_bearish(df_raw, latest_close, stop_loss=fallback_sl)
             t1_val = round(float(t1), 2) if t1 else "N/A"
             
         return trend, t1_val

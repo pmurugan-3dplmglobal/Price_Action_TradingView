@@ -46,14 +46,18 @@ ACTIVE_POSITIONS_DB = "output/monitor/active_positions_db.json"
 SCANNED_TRADES_DB = "output/monitor/scanned_trades_db.json"
 JOURNAL_TRADES_DB = "output/monitor/journal_trades_db.json"
 
-def _sync_tab_databases(db):
+def _sync_tab_databases(db, db_dir=None):
     try:
         trades = db.get("trades", [])
         active_trades = [t for t in trades if t.get("status") == "ACTIVE"]
         completed_trades = [t for t in trades if t.get("status") != "ACTIVE"]
         
-        _write_json(ACTIVE_POSITIONS_DB, {"updated_at": time.strftime("%Y-%m-%d %H:%M:%S"), "positions": active_trades})
-        _write_json(JOURNAL_TRADES_DB, {"updated_at": time.strftime("%Y-%m-%d %H:%M:%S"), "journal_entries": completed_trades})
+        target_dir = db_dir or os.path.dirname(_get_db_path())
+        active_path = os.path.join(target_dir, "active_positions_db.json")
+        journal_path = os.path.join(target_dir, "journal_trades_db.json")
+
+        _write_json(active_path, {"updated_at": time.strftime("%Y-%m-%d %H:%M:%S"), "positions": active_trades})
+        _write_json(journal_path, {"updated_at": time.strftime("%Y-%m-%d %H:%M:%S"), "journal_entries": completed_trades})
     except Exception as e:
         pass
 
@@ -66,7 +70,7 @@ def _write(db):
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(db, f, indent=2)
             os.replace(tmp, db_path)
-            _sync_tab_databases(db)
+            _sync_tab_databases(db, db_dir=os.path.dirname(db_path))
             return
         except:
             time.sleep(0.05)

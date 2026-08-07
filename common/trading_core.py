@@ -152,13 +152,17 @@ def resample_timeframe(df, timeframe_str):
         resample_kwargs = {'rule': rule}
         if origin:
             resample_kwargs['origin'] = origin
-        resampled = hist.resample(**resample_kwargs).agg({
+        agg_dict = {
             'open': 'first',
             'high': 'max',
             'low': 'min',
-            'close': 'last',
-            'volume': 'sum'
-        }).dropna().reset_index()
+            'close': 'last'
+        }
+        if 'volume' in hist.columns:
+            agg_dict['volume'] = 'sum'
+        resampling = hist.resample(**resample_kwargs).agg(agg_dict)
+        resampled = resampling.dropna(subset=['open', 'high', 'low', 'close']).reset_index()
+        resampled = resampled.rename(columns={time_col: 'date'})
         return resampled
     except Exception as e:
         logging.warning(f"Resampling failed for {timeframe_str}: {e}")
@@ -517,7 +521,11 @@ def calculate_sl_buffer(price_level, side="BULL"):
     - For High Options / Stock Spot (200 <= price < 500): max(1.00, price * 0.01)
     - For Index Spot (price >= 500): max(2.00, price * 0.005)
     """
-    price = float(price_level)
+    try:
+        price = max(0.01, float(price_level or 0.0))
+    except Exception:
+        price = 100.0
+
     if price < 50:
         buffer = max(0.15, price * 0.02)
     elif price < 200:
@@ -527,10 +535,10 @@ def calculate_sl_buffer(price_level, side="BULL"):
     else:
         buffer = max(2.00, price * 0.005)
 
-    if str(side).upper() == "BEAR":
+    if str(side).upper() in ["BEAR", "PE", "SHORT"]:
         return round(price + buffer, 2)
     else:
-        return round(price - buffer, 2)
+        return round(max(0.01, price - buffer), 2)
 
 def check_circuit_and_spread_shield(kite, symbol, exchange="NSE", side="BUY"):
     """
@@ -1131,16 +1139,26 @@ def trading_days_between(start, end):
         current += timedelta(days=1)
     return days
 
-def calc_rr(entry, sl, t1, t2):
+def calc_rr(entry, sl, t1, t2, side="BULL"):
     if entry is None or sl is None or t1 is None:
-        return 0
-    risk = entry - sl
-    if risk <= 0:
-        return 0
-    targets = [t1]
-    if t2 is not None:
-        targets.append(t2)
-    return sum((t - entry) / risk for t in targets) / len(targets)
+        return 0.0
+    is_bear = str(side).upper() in ["BEAR", "PE", "SHORT"] or (sl > entry)
+    if is_bear:
+        risk = sl - entry
+        if risk <= 0:
+            return 0.0
+        targets = [t1]
+        if t2 is not None:
+            targets.append(t2)
+        return round(sum((entry - t) / risk for t in targets) / len(targets), 2)
+    else:
+        risk = entry - sl
+        if risk <= 0:
+            return 0.0
+        targets = [t1]
+        if t2 is not None:
+            targets.append(t2)
+        return round(sum((t - entry) / risk for t in targets) / len(targets), 2)
 
 def live_execution_enabled(flag_path):
     return os.path.exists(flag_path)
@@ -1967,44 +1985,54 @@ def reconcile_positions(kite, registry, positions_dict, lock, engine, timeframe_
     if save_state_fn:
         save_state_fn()
 
-def is_anchor_valid_and_active(df_anchor, candle_a_time, sl_target, t1_target):
+def is_anchor_valid_and_active(df_anchor, candle_a_time, sl_target, t1_target, side="BULL"):
     """
     Generic Universal Rule (Anchor TF Specific):
     For a given Anchor TF dataframe (`df_anchor`), verify that:
     1. Anchor is newest/valid.
-    2. No subsequent candle on this Anchor TF closed below SL (closing basis for SL).
-    3. No subsequent candle on this Anchor TF touched T1 (high price >= T1).
+    2. No subsequent candle on this Anchor TF hit SL (closing basis).
+    3. No subsequent candle on this Anchor TF touched T1 (high >= T1 for BULL, low <= T1 for BEAR).
     Returns True if Anchor is valid and active; False if invalidated or already completed.
     """
     if df_anchor is None or df_anchor.empty or not candle_a_time:
         return True
     try:
-        c_time_str = str(candle_a_time)
         if 'date' not in df_anchor.columns:
             return True
-        subseq = df_anchor[df_anchor['date'].astype(str) > c_time_str]
+        c_dt = pd.to_datetime(candle_a_time)
+        anchor_dates = pd.to_datetime(df_anchor['date'])
+        subseq = df_anchor[anchor_dates > c_dt]
         if subseq.empty:
             return True
         
         sl_val = float(sl_target) if sl_target else 0.0
         t1_val = float(t1_target) if t1_target else 0.0
         
-        # Rule 1: Discard if any subsequent Anchor TF candle closed below SL
-        if sl_val > 0 and (subseq['close'].astype(float) <= sl_val).any():
-            return False
-            
-        # Rule 2: Discard if any subsequent Anchor TF candle touched T1 (high >= T1)
-        if t1_val > 0 and (subseq['high'].astype(float) >= t1_val).any():
-            return False
+        is_bear = str(side).upper() in ["BEAR", "PE", "SHORT"] or (sl_val > t1_val > 0)
+        
+        if is_bear:
+            # Bearish Rule 1: Discard if any subsequent Anchor TF candle closed at or above SL
+            if sl_val > 0 and (subseq['close'].astype(float) >= sl_val).any():
+                return False
+            # Bearish Rule 2: Discard if any subsequent Anchor TF candle touched T1 (low <= T1)
+            if t1_val > 0 and (subseq['low'].astype(float) <= t1_val).any():
+                return False
+        else:
+            # Bullish Rule 1: Discard if any subsequent Anchor TF candle closed at or below SL
+            if sl_val > 0 and (subseq['close'].astype(float) <= sl_val).any():
+                return False
+            # Bullish Rule 2: Discard if any subsequent Anchor TF candle touched T1 (high >= T1)
+            if t1_val > 0 and (subseq['high'].astype(float) >= t1_val).any():
+                return False
             
         return True
     except Exception as e:
         logging.warning(f"Error checking anchor validity: {e}")
         return True
 
-def is_setup_already_completed(df_candles, candle_time, t1_target, sl_target):
+def is_setup_already_completed(df_candles, candle_time, t1_target, sl_target, side="BULL"):
     """Return True if setup was completed or invalidated."""
-    return not is_anchor_valid_and_active(df_candles, candle_time, sl_target, t1_target)
+    return not is_anchor_valid_and_active(df_candles, candle_time, sl_target, t1_target, side=side)
 
 def find_newest_valid_anchor(df):
     """
@@ -3028,6 +3056,8 @@ def scan_anchor_bcd_breakout_bearish(df_entry, df_anchor):
             "T2": t2,
             "T3": t3,
             "RR": round(rr, 2),
+            "CandleTime": str(entry_candle.get('date', '')),
+            "CandleATime": str(a_date),
             "A_Date": str(a_date),
             "D_Date": str(entry_candle.get('date', '')),
             "Stage_Status": stage_status,
@@ -3101,9 +3131,12 @@ def scan_trend_continuation_reentry(df_entry, df_anchor):
         "T1": t1,
         "T2": t2,
         "T3": t3,
+        "Close": entry_price,
         "Entry": entry_price,
         "RR": round(rr, 2),
         "Signal": "Immediate_ReEntry",
+        "CandleTime": str(current_candle.get("date", "")),
+        "CandleATime": str(trigger_candle.get("date", "")),
         "D_time": str(current_candle.get("date", "")),
         "A_time": str(trigger_candle.get("date", ""))
     }
@@ -3165,9 +3198,12 @@ def scan_trend_continuation_reentry_bearish(df_entry, df_anchor):
         "T1": t1,
         "T2": t2,
         "T3": t3,
+        "Close": entry_price,
         "Entry": entry_price,
         "RR": round(rr, 2),
         "Signal": "Immediate_ReEntry_Bear",
+        "CandleTime": str(current_candle.get("date", "")),
+        "CandleATime": str(trigger_candle.get("date", "")),
         "D_time": str(current_candle.get("date", "")),
         "A_time": str(trigger_candle.get("date", ""))
     }
