@@ -1742,6 +1742,7 @@ def write_scan_display_data(staged, active, display_file, engine_name=None):
                 "symbol": t.get("symbol", ""),
                 "contract": contract,
                 "side": t.get("side", ""),
+                "strike": t.get("strike", ""),
                 "entry_spot": entry,
                 "current_sl": sl,
                 "t1": t1,

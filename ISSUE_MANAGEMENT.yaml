@@ -4,7 +4,7 @@
 meta:
   system: Price Action Unified Strategy System
   version: Prod Code v02
-  last_updated: "2026-07-28"
+  last_updated: "2026-08-07"
   purpose: Document operational failures, root causes, regression fixes, and system enhancements.
 
 issues:
@@ -603,6 +603,25 @@ issues:
       1. Updated top summary cards to display Staged Setups, Scanned Setups, Data Feed Status (100%), and Open-Source Engine (ACTIVE).
       2. Focused Today's Scan tab strictly on open-source market scanning and setup analysis across both dashboards.
     status: RESOLVED
+
+  - id: ISSUE-024
+    title: Option Scan Tab Shows Spot Price Instead of Strike Price in Entry Column
+    severity: LOW
+    category: Dashboard UX
+    date_reported: "2026-08-07"
+    symptom: |
+      Options Dashboard (Port 6060) Scan tab Entry column displayed the underlying spot price (e.g., POWERGRID 271.80) instead of the option strike price (265) for staged contracts like POWERGRID26AUG265CE.
+    root_cause: |
+      write_scan_display_data build_trade in common/trading_core.py did not serialize the strike field, and the dashboard tradeRow rendered entry_spot.
+    affected_files:
+      - common/trading_core.py
+      - Trade_Option/app_option_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Added "strike": t.get("strike", "") to build_trade output in common/trading_core.py write_scan_display_data.
+      2. Updated tradeRow in Trade_Option/app_option_Trade.py to render strike in the Entry column, with a contract-name fallback parser (e.g., POWERGRID26AUG265CE -> 265, NIFTY2681124600CE -> 24600).
+    status: RESOLVED
+
 
 
 
