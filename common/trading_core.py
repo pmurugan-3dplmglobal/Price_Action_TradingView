@@ -1520,6 +1520,15 @@ def derive_sl_targets_for_contract(kite, contract, entry_price, timeframe_entry=
                 df_a = fetch_and_resample_candles(kite, token, from_d, to_d, timeframe_anchor)
             except Exception as fetch_err:
                 logging.warning(f"Candle fetch error for {contract}: {fetch_err}")
+        else:
+            try:
+                df_e = fetch_and_resample_candles(None, contract, from_d, to_d, timeframe_entry)
+                df_a = fetch_and_resample_candles(None, contract, from_d, to_d, timeframe_anchor)
+                if (not ep or ep <= 0) and df_a is not None and not df_a.empty:
+                    ep = float(df_a.iloc[-1]["close"])
+                    max_loss_sl = round(ep * 0.90, 2) if ep > 0 else 0.0
+            except Exception as fetch_err:
+                logging.warning(f"Open-source candle fetch error for {contract}: {fetch_err}")
 
         sl_val = None
         t1, t2, t3 = None, None, None
@@ -1692,7 +1701,7 @@ def lookup_scan_sl_target(contract, symbol, engine, kite=None, entry_price=0, ti
         except Exception:
             pass
 
-    if kite and (contract or symbol) and entry_price > 0:
+    if (contract or symbol):
         return derive_sl_targets_for_contract(kite, contract or symbol, entry_price, timeframe_entry, timeframe_anchor)
 
     return None
@@ -2056,6 +2065,8 @@ def scan_symbol(kite, symbol, config, from_entry, to_entry, from_anchor, to_anch
     pe_list = resolve_fn(symbol, current_spot, config['strike_step'], "PE", strike_range)
     ce_map = {c["strike"]: c for c in ce_list}
     pe_map = {p["strike"]: p for p in pe_list}
+    open_source = kite is None or getattr(kite, "access_token", "") == "open_source_token"
+    fetch_id = symbol if open_source else None
     for strike in sorted(set(ce_map) & set(pe_map)):
         ce = ce_map[strike]
         pe = pe_map[strike]
@@ -2064,12 +2075,12 @@ def scan_symbol(kite, symbol, config, from_entry, to_entry, from_anchor, to_anch
         try:
             with ThreadPoolExecutor(max_workers=2) as pool:
                 tasks = {
-                    pool.submit(fetch_and_resample_candles, kite, ce["token"], from_entry, to_entry, timeframe_entry): ("ce", "entry"),
-                    pool.submit(fetch_and_resample_candles, kite, pe["token"], from_entry, to_entry, timeframe_entry): ("pe", "entry"),
+                    pool.submit(fetch_and_resample_candles, kite, fetch_id or ce["token"], from_entry, to_entry, timeframe_entry): ("ce", "entry"),
+                    pool.submit(fetch_and_resample_candles, kite, fetch_id or pe["token"], from_entry, to_entry, timeframe_entry): ("pe", "entry"),
                 }
                 if not same_tf:
-                    tasks[pool.submit(fetch_and_resample_candles, kite, ce["token"], from_anchor, to_anchor, timeframe_anchor)] = ("ce", "anchor")
-                    tasks[pool.submit(fetch_and_resample_candles, kite, pe["token"], from_anchor, to_anchor, timeframe_anchor)] = ("pe", "anchor")
+                    tasks[pool.submit(fetch_and_resample_candles, kite, fetch_id or ce["token"], from_anchor, to_anchor, timeframe_anchor)] = ("ce", "anchor")
+                    tasks[pool.submit(fetch_and_resample_candles, kite, fetch_id or pe["token"], from_anchor, to_anchor, timeframe_anchor)] = ("pe", "anchor")
                 for f in as_completed(tasks):
                     tag, kind = tasks[f]
                     try:
@@ -2093,7 +2104,7 @@ def scan_symbol(kite, symbol, config, from_entry, to_entry, from_anchor, to_anch
                 continue
             df = dfs.get((tag_key, kind_key), pd.DataFrame())
             if len(df) < 5:
-                tok = ce["token"] if tag_key == "ce" else pe["token"]
+                tok = fetch_id or (ce["token"] if tag_key == "ce" else pe["token"])
                 tf = timeframe_entry if kind_key == "entry" else timeframe_anchor
                 dfs[(tag_key, kind_key)] = fetch_option_data(kite, tok, from_d, to_d, tf, timeframe_fallback)
         if same_tf:

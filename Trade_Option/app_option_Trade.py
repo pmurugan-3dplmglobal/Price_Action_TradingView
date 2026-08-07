@@ -304,24 +304,26 @@ def parse_scans_for_program(log_lines, prog_id):
 def refresh_data():
     global cached_data, _ltp_last_fetch, _last_scan_reset
     while True:
-        with data_lock:
-            pos = load_positions()
-            journal = load_journal()
-            cached_data["positions"] = pos
-            cached_data["journal"] = journal
-            cached_data["stats"] = compute_stats(pos, journal)
-            try:
-                all_t = trade_db.get_all_trades()
-                cached_data["all_trades"] = all_t
-            except Exception:
-                cached_data["all_trades"] = []
-            for pid in PROGRAMS:
-                log_file = PROGRAMS[pid].get("log_file")
-                log_lines = tail_log(log_file) if log_file else []
-                cached_data["log_tail"][pid] = log_lines
-                scan_lines, anchors, abc_matches = parse_scans_for_program(log_lines, pid)
-                cached_data["scans"][pid] = scan_lines
-                cached_data["scan_summary"][pid] = {"anchors": anchors, "abc_matches": abc_matches}
+        try:
+            with data_lock:
+                pos = load_positions()
+                journal = load_journal()
+                cached_data["positions"] = pos
+                cached_data["journal"] = journal
+                cached_data["stats"] = compute_stats(pos, journal)
+                try:
+                    all_t = trade_db.get_all_trades()
+                    cached_data["all_trades"] = all_t
+                except Exception as e:
+                    logging.error(f"Error loading all_trades: {e}")
+                    cached_data["all_trades"] = []
+                for pid in PROGRAMS:
+                    log_file = PROGRAMS[pid].get("log_file")
+                    log_lines = tail_log(log_file) if log_file else []
+                    cached_data["log_tail"][pid] = log_lines
+                    scan_lines, anchors, abc_matches = parse_scans_for_program(log_lines, pid)
+                    cached_data["scans"][pid] = scan_lines
+                    cached_data["scan_summary"][pid] = {"anchors": anchors, "abc_matches": abc_matches}
             now_ist = dt.now()
             today_str = now_ist.strftime("%Y-%m-%d")
             market_open = now_ist.replace(hour=9, minute=0, second=0, microsecond=0)
@@ -337,9 +339,11 @@ def refresh_data():
                                 existing["timestamp"] = now_ist.strftime("%Y-%m-%d %H:%M:%S")
                                 if "staged_trades" not in existing: existing["staged_trades"] = []
                                 if "carry_forward" not in existing: existing["carry_forward"] = []
+                                if "active_live" not in existing: existing["active_live"] = []
+                                existing["staged_trades"] = []
                                 with open(f, "w") as fh:
                                     json.dump(existing, fh, indent=2)
-                                continue  # Keep existing scan display data intact
+                                continue  # New day: clear stale staged candidates, keep carry-forward/active
                         empty_scan = {"date": today_str, "timestamp": now_ist.strftime("%Y-%m-%d %H:%M:%S"), "staged_trades": [], "carry_forward": [], "active_live": []}
                         with open(f, "w") as fh:
                             json.dump(empty_scan, fh)
@@ -354,7 +358,7 @@ def refresh_data():
                 if os.path.exists(stock_scan_file):
                     with open(stock_scan_file, "r") as f:
                         stock_disp = json.load(f)
-                    if stock_disp.get("staged_trades"):
+                    if stock_disp.get("date") == today_str and stock_disp.get("staged_trades"):
                         if not scan_display.get("nifty50"):
                             scan_display["nifty50"] = stock_disp
                         else:
@@ -395,8 +399,10 @@ def refresh_data():
                         "source": "local"
                     })
                 cached_data["active_positions"] = active_list
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(f"Error loading active_positions: {e}")
+        except Exception as outer_e:
+            logging.error(f"Outer refresh_data error: {outer_e}")
         if int(time.time()) % 3600 < REFRESH_SECONDS:
             auto_export_if_new_month()
         time.sleep(REFRESH_SECONDS)
@@ -976,7 +982,7 @@ HTML_TEMPLATE = """
             engines.forEach(eng => {
                 const data = sd[eng];
                 if (!data) return;
-                const rawStaged = (data.staged_trades || []).concat(data.carry_forward || []);
+                const rawStaged = data.staged_trades || [];
                 const seenContracts = new Set();
                 const staged = [];
                 rawStaged.forEach(t => {
@@ -1027,13 +1033,42 @@ HTML_TEMPLATE = """
             fetch('/api/edit-lock', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({symbol: sym, active: false})});
             renderScanTab(true); renderReport(true);
         }
+
         async function saveEdit(uid, symbol, engine) {
             const es = editStates[uid];
             if (!es) return;
             const newSl = document.getElementById('sl_'+uid)?.value;
             const newT1 = document.getElementById('t1_'+uid)?.value;
             const newT2 = document.getElementById('t2_'+uid)?.value;
-            const n            const actPosList = d.active_positions || d.positions || [];
+            const newT3 = document.getElementById('t3_'+uid)?.value;
+            if (!newSl || !newT1) return;
+            delete editStates[uid];
+            if (Object.keys(editStates).length === 0) window._isEditing = false;
+            try {
+                const r = await fetch('/api/update-position', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({engine: engine, symbol: symbol, current_sl: parseFloat(newSl), t1: parseFloat(newT1), t2: newT2 ? parseFloat(newT2) : null, t3: newT3 ? parseFloat(newT3) : null})
+                });
+                const j = await r.json();
+                if (j.ok) {
+                    showToast(`SL/T1 updated for ${symbol}`, 'success');
+                } else {
+                    showToast(`Failed: ${j.error || 'unknown'}`, 'error');
+                }
+            } catch(e) {
+                showToast(`Network error: ${e.message}`, 'error');
+            }
+            refreshData();
+        }
+
+        // ── Main Dashboard Render ──
+        function renderReport(force=false) {
+            if (!force && (window._isEditing || (document.activeElement && document.activeElement.tagName === "INPUT"))) return;
+            const d = window._lastData;
+            if (!d) return;
+            const stats = d.stats || {};
+            const actPosList = d.active_positions || d.positions || [];
             const journal = d.journal || [];
 
             const actPos = actPosList.length || 0;
@@ -1074,17 +1109,17 @@ HTML_TEMPLATE = """
                         return (tc && (tc === kc || kc.includes(tc) || tc.includes(kc))) || (ts && (ts === kc || kc.includes(ts)));
                     });
                     const item = {
-                        symbol: c_name,
+                        symbol: kp.symbol || c_name,
                         contract: c_name,
-                        engine: kp.exchange === 'NFO' ? 'Index' : 'Nifty 50',
+                        engine: (kp.exchange === 'NFO' || (c_name||'').includes('NIFTY') || (c_name||'').includes('BANK')) ? 'Index' : 'Nifty 50',
                         pattern: kp.pattern || (dbMatch && dbMatch.pattern ? dbMatch.pattern : 'OPEN_TRADE'),
-                        entry_spot: kp.entry_price,
-                        quantity: kp.quantity,
+                        entry_spot: kp.entry_spot || kp.entry_price || (dbMatch ? dbMatch.entry_spot : ''),
+                        quantity: kp.quantity || (dbMatch ? dbMatch.position_size : 1),
                         pnl: kp.pnl,
-                        current_sl: kp.current_sl !== undefined ? kp.current_sl : (dbMatch ? dbMatch.current_sl : ''),
-                        t1: kp.t1 !== undefined ? kp.t1 : (dbMatch ? dbMatch.t1 : ''),
-                        t2: kp.t2 !== undefined ? kp.t2 : (dbMatch ? dbMatch.t2 : ''),
-                        t3: kp.t3 !== undefined ? kp.t3 : (dbMatch ? dbMatch.t3 : ''),
+                        current_sl: kp.current_sl !== undefined && kp.current_sl !== '' ? kp.current_sl : (dbMatch ? dbMatch.current_sl : ''),
+                        t1: kp.t1 !== undefined && kp.t1 !== '' ? kp.t1 : (dbMatch ? dbMatch.t1 : ''),
+                        t2: kp.t2 !== undefined && kp.t2 !== '' ? kp.t2 : (dbMatch ? dbMatch.t2 : ''),
+                        t3: kp.t3 !== undefined && kp.t3 !== '' ? kp.t3 : (dbMatch ? dbMatch.t3 : ''),
                         token: dbMatch ? (dbMatch.option_token || dbMatch.index_token || '') : (kp.token || ''),
                         status: 'ACTIVE',
                         source: 'local'
@@ -1096,13 +1131,17 @@ HTML_TEMPLATE = """
             const dbSeen = new Set();
             allTrades.forEach(t => {
                 const contract = t.contract || t.symbol || '';
-                const inActive = actPosList.some(kp => kp.contract === contract || kp.contract.includes(contract) || contract.includes(kp.contract));
-                if (inActive) return;
+                const inActive = actPosList.some(kp => {
+                    const kC = (kp.contract || kp.symbol || '').replace(/\\s+/g, '').toUpperCase();
+                    const tC = (contract).replace(/\\s+/g, '').toUpperCase();
+                    return kC && tC && (kC === tC || kC.includes(tC) || tC.includes(kC));
+                });
                 let st = (t.status || '').toLowerCase();
-                if (st === 'active' && !inActive) st = 'exited';
                 if (positionFilter === 'active' && st !== 'active') return;
                 if (positionFilter === 'completed' && st !== 'sl_hit' && st !== 'target_hit' && st !== 'exited') return;
                 if (positionFilter === 'sl_hit' && st !== 'sl_hit') return;
+
+                if (inActive && st === 'active') return;
 
                 const dedupKey = (contract + '_' + st + '_' + (t.entry_spot || '')).toUpperCase();
                 if (dbSeen.has(dedupKey)) return;
@@ -1118,7 +1157,7 @@ HTML_TEMPLATE = """
                     t1: t.t1 !== undefined && t.t1 !== null ? t.t1 : '',
                     t2: t.t2 !== undefined && t.t2 !== null ? t.t2 : '',
                     t3: t.t3 !== undefined && t.t3 !== null ? t.t3 : '',
-                    status: st === 'exited' ? 'EXITED' : (t.status || 'ACTIVE'),
+                    status: t.status || 'ACTIVE',
                     created_at: t.created_at || '',
                     exit_time: t.exit_time || '',
                     pnl_percent: t.pnl_percent,
@@ -1986,14 +2025,34 @@ def api_status():
                 "scan_summary": cached_data["scan_summary"].get(pid, {"anchors": {}, "abc_matches": {}})
             }
         cfg = load_config()
+        all_t = trade_db.get_all_trades()
+        active_t = trade_db.get_active_trades()
+        print(f"[API_STATUS DEBUG] db_path: {trade_db._get_db_path()} | active_cnt: {len(active_t)} | all_cnt: {len(all_t)}", flush=True)
+        active_list = []
+        for t in active_t:
+            active_list.append({
+                "contract": t.get("contract") or t.get("symbol"),
+                "symbol": t.get("symbol") or t.get("contract"),
+                "quantity": t.get("position_size", 1),
+                "entry_price": t.get("entry_spot", 0),
+                "entry_spot": t.get("entry_spot", 0),
+                "ltp": t.get("current_price") or t.get("entry_spot", 0),
+                "pnl": t.get("pnl", 0),
+                "current_sl": t.get("current_sl", 0),
+                "t1": t.get("t1", 0),
+                "t2": t.get("t2", 0),
+                "t3": t.get("t3", 0),
+                "pattern": t.get("pattern", "ACTIVE"),
+                "source": "local"
+            })
         return jsonify({
             "programs": prog_status,
-            "positions": cached_data["positions"],
-            "all_trades": cached_data["all_trades"],
-            "active_positions": cached_data["active_positions"],
+            "positions": {t["symbol"]: t for t in active_t},
+            "all_trades": all_t,
+            "active_positions": active_list,
             "ltp": {str(k): v for k, v in cached_data["ltp"].items()},
             "journal": cached_data["journal"],
-            "stats": cached_data["stats"],
+            "stats": compute_stats({t["symbol"]: t for t in active_t}, cached_data["journal"]),
             "config": cfg,
             "scan_display": cached_data["scan_display"],
             "live_execution": cached_data["live_execution"],
@@ -2478,6 +2537,11 @@ def api_analyze_trade():
         if not symbol:
             return jsonify({"ok": False, "error": "Valid Symbol or Contract Name required"}), 400
 
+        timeframe_entry = timeframe
+        timeframe_anchor = "30minute" if engine == "nifty50" else "15minute"
+        if timeframe in ["day", "week", "4hr", "1hr", "75min"]:
+            timeframe_anchor = timeframe
+
         analysis = derive_sl_targets_for_contract(None, symbol, entry_price, timeframe_entry, timeframe_anchor)
         if not analysis:
             sl_val = round(entry_price * 0.90, 2) if entry_price > 0 else 0.0
@@ -2653,12 +2717,48 @@ def auto_eod_journal_scheduler():
             logging.warning(f"[AUTO EOD JOURNAL] Error in scheduler: {e}")
         time.sleep(60)
 
+def refresh_data_once():
+    global cached_data
+    with data_lock:
+        pos = load_positions()
+        journal = load_journal()
+        cached_data["positions"] = pos
+        cached_data["journal"] = journal
+        cached_data["stats"] = compute_stats(pos, journal)
+        try:
+            cached_data["all_trades"] = trade_db.get_all_trades()
+        except Exception:
+            cached_data["all_trades"] = []
+        try:
+            active = trade_db.get_active_trades()
+            active_list = []
+            for t in active:
+                active_list.append({
+                    "contract": t.get("contract") or t.get("symbol"),
+                    "symbol": t.get("symbol") or t.get("contract"),
+                    "quantity": t.get("position_size", 1),
+                    "entry_price": t.get("entry_spot", 0),
+                    "entry_spot": t.get("entry_spot", 0),
+                    "ltp": t.get("current_price") or t.get("entry_spot", 0),
+                    "pnl": t.get("pnl", 0),
+                    "current_sl": t.get("current_sl", 0),
+                    "t1": t.get("t1", 0),
+                    "t2": t.get("t2", 0),
+                    "t3": t.get("t3", 0),
+                    "pattern": t.get("pattern", "ACTIVE"),
+                    "source": "local"
+                })
+            cached_data["active_positions"] = active_list
+        except Exception:
+            pass
+
 def main():
     os.makedirs(os.path.join(BASE_DIR, "input"), exist_ok=True)
     os.makedirs(os.path.join(BASE_DIR, "output", "logs"), exist_ok=True)
     os.makedirs(os.path.join(BASE_DIR, "output", "monitor"), exist_ok=True)
     os.makedirs("logs", exist_ok=True)
     auto_export_if_new_month()
+    refresh_data_once()
     worker = threading.Thread(target=refresh_data, daemon=True)
     worker.start()
     eod_worker = threading.Thread(target=auto_eod_journal_scheduler, daemon=True)

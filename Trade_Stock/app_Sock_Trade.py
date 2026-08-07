@@ -359,9 +359,11 @@ def refresh_data():
                                 existing["timestamp"] = now_ist.strftime("%Y-%m-%d %H:%M:%S")
                                 if "staged_trades" not in existing: existing["staged_trades"] = []
                                 if "carry_forward" not in existing: existing["carry_forward"] = []
+                                if "active_live" not in existing: existing["active_live"] = []
+                                existing["staged_trades"] = []
                                 with open(f, "w") as fh:
                                     json.dump(existing, fh, indent=2)
-                                continue  # Keep existing scan display data intact
+                                continue  # New day: clear stale staged candidates, keep carry-forward/active
                         empty_scan = {"date": today_str, "timestamp": now_ist.strftime("%Y-%m-%d %H:%M:%S"), "staged_trades": [], "carry_forward": [], "active_live": []}
                         with open(f, "w") as fh:
                             json.dump(empty_scan, fh)
@@ -376,7 +378,7 @@ def refresh_data():
                 if os.path.exists(option_scan_file):
                     with open(option_scan_file, "r") as f:
                         opt_disp = json.load(f)
-                    if opt_disp.get("staged_trades"):
+                    if opt_disp.get("date") == today_str and opt_disp.get("staged_trades"):
                         if not scan_display.get("nifty50"):
                             scan_display["nifty50"] = opt_disp
                         else:
@@ -1006,7 +1008,7 @@ HTML_TEMPLATE = """
             engines.forEach(eng => {
                 const data = sd[eng];
                 if (!data) return;
-                const rawStaged = (data.staged_trades || []).concat(data.carry_forward || []);
+                const rawStaged = data.staged_trades || [];
                 const seenContracts = new Set();
                 const staged = [];
                 rawStaged.forEach(t => {
@@ -1132,17 +1134,17 @@ HTML_TEMPLATE = """
                         return (tc && (tc === kc || kc.includes(tc) || tc.includes(kc))) || (ts && (ts === kc || kc.includes(ts)));
                     });
                     const item = {
-                        symbol: c_name,
+                        symbol: kp.symbol || c_name,
                         contract: c_name,
-                        engine: kp.exchange === 'NFO' ? 'Index' : 'Nifty 50',
+                        engine: (kp.exchange === 'NFO' || (c_name||'').includes('NIFTY') || (c_name||'').includes('BANK')) ? 'Index' : 'Nifty 50',
                         pattern: kp.pattern || (dbMatch && dbMatch.pattern ? dbMatch.pattern : 'OPEN_TRADE'),
-                        entry_spot: kp.entry_price,
-                        quantity: kp.quantity,
+                        entry_spot: kp.entry_spot || kp.entry_price || (dbMatch ? dbMatch.entry_spot : ''),
+                        quantity: kp.quantity || (dbMatch ? dbMatch.position_size : 1),
                         pnl: kp.pnl,
-                        current_sl: kp.current_sl !== undefined ? kp.current_sl : (dbMatch ? dbMatch.current_sl : ''),
-                        t1: kp.t1 !== undefined ? kp.t1 : (dbMatch ? dbMatch.t1 : ''),
-                        t2: kp.t2 !== undefined ? kp.t2 : (dbMatch ? dbMatch.t2 : ''),
-                        t3: kp.t3 !== undefined ? kp.t3 : (dbMatch ? dbMatch.t3 : ''),
+                        current_sl: kp.current_sl !== undefined && kp.current_sl !== '' ? kp.current_sl : (dbMatch ? dbMatch.current_sl : ''),
+                        t1: kp.t1 !== undefined && kp.t1 !== '' ? kp.t1 : (dbMatch ? dbMatch.t1 : ''),
+                        t2: kp.t2 !== undefined && kp.t2 !== '' ? kp.t2 : (dbMatch ? dbMatch.t2 : ''),
+                        t3: kp.t3 !== undefined && kp.t3 !== '' ? kp.t3 : (dbMatch ? dbMatch.t3 : ''),
                         token: dbMatch ? (dbMatch.option_token || dbMatch.index_token || '') : (kp.token || ''),
                         status: 'ACTIVE',
                         source: 'local'
@@ -1154,13 +1156,17 @@ HTML_TEMPLATE = """
             const dbSeen = new Set();
             allTrades.forEach(t => {
                 const contract = t.contract || t.symbol || '';
-                const inActive = actPosList.some(kp => kp.contract === contract || kp.contract.includes(contract) || contract.includes(kp.contract));
-                if (inActive) return;
+                const inActive = actPosList.some(kp => {
+                    const kC = (kp.contract || kp.symbol || '').replace(/\\s+/g, '').toUpperCase();
+                    const tC = (contract).replace(/\\s+/g, '').toUpperCase();
+                    return kC && tC && (kC === tC || kC.includes(tC) || tC.includes(kC));
+                });
                 let st = (t.status || '').toLowerCase();
-                if (st === 'active' && !inActive) st = 'exited';
                 if (positionFilter === 'active' && st !== 'active') return;
                 if (positionFilter === 'completed' && st !== 'sl_hit' && st !== 'target_hit' && st !== 'exited') return;
                 if (positionFilter === 'sl_hit' && st !== 'sl_hit') return;
+
+                if (inActive && st === 'active') return;
 
                 const dedupKey = (contract + '_' + st + '_' + (t.entry_spot || '')).toUpperCase();
                 if (dbSeen.has(dedupKey)) return;
@@ -1176,7 +1182,7 @@ HTML_TEMPLATE = """
                     t1: t.t1 !== undefined && t.t1 !== null ? t.t1 : '',
                     t2: t.t2 !== undefined && t.t2 !== null ? t.t2 : '',
                     t3: t.t3 !== undefined && t.t3 !== null ? t.t3 : '',
-                    status: st === 'exited' ? 'EXITED' : (t.status || 'ACTIVE'),
+                    status: t.status || 'ACTIVE',
                     created_at: t.created_at || '',
                     exit_time: t.exit_time || '',
                     pnl_percent: t.pnl_percent,
@@ -2029,14 +2035,33 @@ def api_status():
                 "scan_summary": cached_data["scan_summary"].get(pid, {"anchors": {}, "abc_matches": {}})
             }
         cfg = load_config()
+        all_t = trade_db.get_all_trades()
+        active_t = trade_db.get_active_trades()
+        active_list = []
+        for t in active_t:
+            active_list.append({
+                "contract": t.get("contract") or t.get("symbol"),
+                "symbol": t.get("symbol") or t.get("contract"),
+                "quantity": t.get("position_size", 1),
+                "entry_price": t.get("entry_spot", 0),
+                "entry_spot": t.get("entry_spot", 0),
+                "ltp": t.get("current_price") or t.get("entry_spot", 0),
+                "pnl": t.get("pnl", 0),
+                "current_sl": t.get("current_sl", 0),
+                "t1": t.get("t1", 0),
+                "t2": t.get("t2", 0),
+                "t3": t.get("t3", 0),
+                "pattern": t.get("pattern", "ACTIVE"),
+                "source": "local"
+            })
         return jsonify({
             "programs": prog_status,
-            "positions": cached_data["positions"],
-            "all_trades": cached_data["all_trades"],
-            "active_positions": cached_data["active_positions"],
+            "positions": {t["symbol"]: t for t in active_t},
+            "all_trades": all_t,
+            "active_positions": active_list,
             "ltp": {str(k): v for k, v in cached_data["ltp"].items()},
             "journal": cached_data["journal"],
-            "stats": cached_data["stats"],
+            "stats": compute_stats({t["symbol"]: t for t in active_t}, cached_data["journal"]),
             "config": cfg,
             "scan_display": cached_data["scan_display"],
             "live_execution": cached_data["live_execution"],
@@ -2595,6 +2620,9 @@ def api_analyze_trade():
         
         if not symbol:
             return jsonify({"ok": False, "error": "Valid Symbol or Contract Name required"}), 400
+
+        timeframe_entry = timeframe
+        timeframe_anchor = timeframe
 
         analysis = derive_sl_targets_for_contract(None, symbol, entry_price, timeframe_entry, timeframe_anchor)
         if not analysis:
