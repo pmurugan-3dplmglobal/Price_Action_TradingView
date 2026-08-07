@@ -1757,8 +1757,10 @@ HTML_TEMPLATE = """
         </div>
         <span style="font-size:11px;color:#8b949e;font-weight:600;margin-left:12px;">Port: 6061</span>
         <span style="font-size:11px;color:#8b949e;font-weight:600;margin-left:auto;">
+            {% if role == 'admin' %}
             <a href="/admin" style="color:#58a6ff;text-decoration:none;font-weight:600;">Admin</a>
             <span style="margin:0 8px;">|</span>
+            {% endif %}
             <span style="color:#c9d1d9;">{{ user }}</span>
             <a href="/logout" style="color:#f85149;text-decoration:none;font-weight:600;margin-left:10px;">Logout</a>
         </span>
