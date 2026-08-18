@@ -4,8 +4,17 @@ if COMMON_DIR not in sys.path:
     sys.path.insert(0, COMMON_DIR)
 from datetime import datetime as dt
 from flask import Flask, render_template_string, jsonify, request, Response, session, redirect
+import urllib.parse
 import trade_db
 import dashboard_auth
+from fyers_session import is_fyers_authenticated, get_fyers_session, load_fyers_config
+try:
+    from Fyers_Access_Token_gen import exchange_auth_code
+except ImportError:
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if ROOT_DIR not in sys.path:
+        sys.path.insert(0, ROOT_DIR)
+    from Fyers_Access_Token_gen import exchange_auth_code
 from trading_core import (
     lookup_scan_sl_target,
     derive_sl_targets_for_contract,
@@ -447,7 +456,7 @@ HTML_TEMPLATE = """
         }
 
         function openTVChart(symbol) {
-            const cleanSym = (symbol || 'SBIN').replace(/\s+/g, '').replace('^', '').toUpperCase();
+            const cleanSym = (symbol || 'SBIN').replace(/\\s+/g, '').replace('^', '').toUpperCase();
             let tvSymbol = "NSE:" + cleanSym;
             if (cleanSym === 'NIFTY') tvSymbol = "NSE:NIFTY";
             else if (cleanSym === 'BANKNIFTY') tvSymbol = "NSE:BANKNIFTY";
@@ -1594,8 +1603,94 @@ HTML_TEMPLATE = """
             } catch(e) { console.log(e); }
         }
 
+        async function checkFyersStatus() {
+            try {
+                const res = await fetch('/api/fyers/status');
+                const data = await res.json();
+                const badge = document.getElementById('fyers-status-badge');
+                const label = document.getElementById('fyers-user-label');
+                if (!badge || !label) return;
+                if (data.authenticated) {
+                    badge.style.background = '#238636';
+                    badge.textContent = '● Fyers API Connected';
+                    label.textContent = (data.name || 'User') + ' (' + (data.user_id || 'FAH80919') + ')';
+                } else {
+                    badge.style.background = '#da3633';
+                    badge.textContent = '○ Fyers Disconnected';
+                    label.textContent = 'Login required to fetch live charts';
+                }
+            } catch (e) {
+                console.error('Fyers status check error:', e);
+            }
+        }
+
+        function openFyersAuthModal() {
+            const m = document.getElementById('fyers-auth-modal');
+            if (m) {
+                m.style.display = 'flex';
+                document.getElementById('fyers-auth-input').value = '';
+                document.getElementById('fyers-auth-msg').textContent = '';
+            }
+        }
+
+        function closeFyersAuthModal() {
+            const m = document.getElementById('fyers-auth-modal');
+            if (m) m.style.display = 'none';
+        }
+
+        async function launchFyersAuthWindow() {
+            try {
+                const res = await fetch('/api/fyers/login-url');
+                const data = await res.json();
+                if (data.url) {
+                    window.open(data.url, '_blank');
+                }
+            } catch (e) {
+                showToast('Failed to get login URL', 'error');
+            }
+        }
+
+        async function submitFyersAuthCode() {
+            const inp = document.getElementById('fyers-auth-input');
+            const msg = document.getElementById('fyers-auth-msg');
+            const btn = document.getElementById('fyers-submit-btn');
+            const val = (inp.value || '').trim();
+            if (!val) {
+                msg.style.color = '#f85149';
+                msg.textContent = 'Please paste the URL or auth code first!';
+                return;
+            }
+            btn.disabled = true;
+            msg.style.color = '#58a6ff';
+            msg.textContent = 'Exchanging token...';
+            try {
+                const res = await fetch('/api/fyers/exchange', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code: val})
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    msg.style.color = '#3fb950';
+                    msg.textContent = 'Success! Connected: ' + data.name + ' (' + data.user_id + ')';
+                    showToast('Fyers Connected: ' + data.name, 'success');
+                    checkFyersStatus();
+                    setTimeout(closeFyersAuthModal, 1500);
+                } else {
+                    msg.style.color = '#f85149';
+                    msg.textContent = data.error || 'Token exchange failed';
+                    showToast(data.error || 'Failed', 'error');
+                }
+            } catch (e) {
+                msg.style.color = '#f85149';
+                msg.textContent = 'Network or server error';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
         setInterval(refreshData, {{ refresh * 1000 }});
-        window.addEventListener('load', () => { refreshData(); });
+        window.addEventListener('load', () => { refreshData(); checkFyersStatus(); });
     </script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1785,10 +1880,11 @@ HTML_TEMPLATE = """
     <div class="toast-container" id="toast-container"></div>
     <h1>Trading Control Center <small>Steering & Dashboard</small></h1>
 
-    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-space-between;">
-        <div style="display:flex;align-items:center;gap:10px;">
-            <span style="background:#238636;color:#ffffff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;">● Free Data Feed Active</span>
-            <span style="font-size:12px;color:#c9d1d9;">TradingView & Yahoo Finance Open-Source Edition <span style="color:#8b949e;">(Zero API Key / Credentials Required)</span></span>
+    <div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span id="fyers-status-badge" style="background:#238636;color:#ffffff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:bold;">● Fyers API Connected</span>
+            <span id="fyers-user-label" style="font-size:12px;color:#c9d1d9;">MACHHINDRA NARAYAN RAUT (FAH80919)</span>
+            <button onclick="openFyersAuthModal()" style="background:#1f6feb;color:#ffffff;border:none;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;gap:4px;">🔑 Fyers Login / Token</button>
         </div>
         <span style="font-size:11px;color:#8b949e;font-weight:600;margin-left:12px;">Port: 6061</span>
         <span style="font-size:11px;color:#8b949e;font-weight:600;margin-left:auto;">
@@ -1799,6 +1895,40 @@ HTML_TEMPLATE = """
             <span style="color:#c9d1d9;">{{ user }}</span>
             <a href="/logout" style="color:#f85149;text-decoration:none;font-weight:600;margin-left:10px;">Logout</a>
         </span>
+    </div>
+
+    <!-- Fyers Auth Modal -->
+    <div id="fyers-auth-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:99999;align-items:center;justify-content:center;">
+        <div style="background:#161b22;border:1px solid #30363d;border-radius:10px;width:90%;max-width:540px;padding:24px;box-shadow:0 8px 24px rgba(0,0,0,0.6);position:relative;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h3 style="margin:0;color:#58a6ff;display:flex;align-items:center;gap:8px;">🔑 Fyers API Token Login</h3>
+                <span onclick="closeFyersAuthModal()" style="cursor:pointer;color:#8b949e;font-size:20px;font-weight:bold;">&times;</span>
+            </div>
+            <p style="font-size:12px;color:#8b949e;margin-top:0;margin-bottom:16px;">Generate your daily Fyers access token in two simple steps:</p>
+            
+            <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin-bottom:14px;">
+                <div style="font-weight:bold;font-size:12px;color:#c9d1d9;margin-bottom:6px;">Step 1: Open Fyers Login Page</div>
+                <button onclick="launchFyersAuthWindow()" style="background:#238636;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                    🚀 Open Fyers Login (New Tab) ↗
+                </button>
+                <div style="font-size:11px;color:#8b949e;margin-top:4px;">Sign in with your Fyers User ID, PIN, and TOTP.</div>
+            </div>
+
+            <div style="background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+                <div style="font-weight:bold;font-size:12px;color:#c9d1d9;margin-bottom:6px;">Step 2: Paste Redirect URL or Auth Code</div>
+                <input type="text" id="fyers-auth-input" placeholder="Paste full redirected URL (with auth_code) or code here..." style="width:100%;padding:8px 10px;background:#161b22;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:12px;box-sizing:border-box;margin-bottom:10px;" />
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <button id="fyers-submit-btn" onclick="submitFyersAuthCode()" style="background:#1f6feb;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;">
+                        Submit & Authenticate 🚀
+                    </button>
+                    <span id="fyers-auth-msg" style="font-size:12px;font-weight:bold;"></span>
+                </div>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;">
+                <button onclick="closeFyersAuthModal()" style="background:#21262d;color:#c9d1d9;border:1px solid #30363d;padding:6px 14px;border-radius:6px;font-size:12px;cursor:pointer;">Close</button>
+            </div>
+        </div>
     </div>
 
     <div class="stats-grid">
@@ -2137,7 +2267,7 @@ ADMIN_TEMPLATE = """
 
 @app.before_request
 def auth_gate():
-    if request.path in ("/login", "/register", "/logout"):
+    if request.path in ("/login", "/register", "/logout") or request.path.startswith("/api/fyers/"):
         return None
     if request.path == "/admin":
         if not session.get("user"):
@@ -2273,6 +2403,54 @@ def api_status():
             "live_execution": cached_data["live_execution"],
             "live_execution_index": cached_data["live_execution_index"]
         })
+
+@app.route("/api/fyers/status")
+def api_fyers_status():
+    sess = get_fyers_session(force_refresh=True)
+    if sess:
+        try:
+            prof = sess.get_profile()
+            if isinstance(prof, dict) and prof.get("s") == "ok":
+                data = prof.get("data", {})
+                return jsonify({
+                    "authenticated": True,
+                    "name": data.get("name", "Connected User"),
+                    "user_id": data.get("fy_id", "FAH80919"),
+                    "email": data.get("email_id", "")
+                })
+        except Exception:
+            pass
+        return jsonify({"authenticated": True, "name": "Authenticated User", "user_id": "FYERS"})
+    return jsonify({"authenticated": False})
+
+@app.route("/api/fyers/login-url")
+def api_fyers_login_url():
+    cfg = load_fyers_config()
+    client_id = cfg.get("client_id", "GWDYN0AZW1-200") if cfg else "GWDYN0AZW1-200"
+    redirect_uri = cfg.get("redirect_uri", "https://trade.fyers.in/api-login/redirect-uri/index.html") if cfg else "https://trade.fyers.in/api-login/redirect-uri/index.html"
+    url = f"https://api-t1.fyers.in/api/v3/generate-authcode?client_id={urllib.parse.quote(client_id)}&redirect_uri={urllib.parse.quote(redirect_uri)}&response_type=code&state=price_action_app"
+    return jsonify({"url": url})
+
+@app.route("/api/fyers/exchange", methods=["POST"])
+def api_fyers_exchange():
+    data = request.get_json(force=True, silent=True)
+    if not data or (not data.get("code") and not data.get("url")):
+        return jsonify({"ok": False, "error": "Please provide an Auth Code or Redirect URL"})
+    input_str = data.get("code") or data.get("url")
+    token = exchange_auth_code(input_str.strip())
+    if token:
+        sess = get_fyers_session(force_refresh=True)
+        name, fy_id = "Connected User", "FYERS"
+        if sess:
+            try:
+                prof = sess.get_profile()
+                if isinstance(prof, dict) and prof.get("s") == "ok":
+                    name = prof.get("data", {}).get("name", name)
+                    fy_id = prof.get("data", {}).get("fy_id", fy_id)
+            except Exception:
+                pass
+        return jsonify({"ok": True, "name": name, "user_id": fy_id})
+    return jsonify({"ok": False, "error": "Token exchange failed. Ensure the auth_code is fresh."})
 
 @app.route("/api/token/check")
 def api_token_check():
