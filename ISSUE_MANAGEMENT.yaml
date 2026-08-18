@@ -1666,12 +1666,22 @@ issues:
       3. Canonicalized display paths in lookup_scan_sl_target.
     status: RESOLVED
 
-
-
-
-
-
-
-
-
-
+  - id: BUGFIX-067
+    title: Fix Position Monitor PRODUCT_NRML / PRODUCT_MIS NoneType Attribute Error in Open-Source Mode
+    severity: HIGH
+    category: Engine Execution
+    family: OPEN_SOURCE_MIGRATION
+    date_reported: "2026-08-18"
+    symptom: |
+      Options Dashboard logged: "nifty50: Position monitor error: 'NoneType' object has no attribute 'PRODUCT_NRML'".
+    root_cause: |
+      In stock_options_trade_engine.py and index_options_trade_engine.py, monitor_active_positions passed kite.PRODUCT_NRML and kite.PRODUCT_MIS directly into shared_monitor_positions without safe getattr() fallback when kite was None in open-source mode.
+    affected_files:
+      - Trade_Option/stock_options_trade_engine.py
+      - Trade_Option/index_options_trade_engine.py
+      - common/trading_core.py
+    resolution: |
+      1. Updated stock_options_trade_engine.py to use getattr(kite, "PRODUCT_NRML", "NRML") in monitor_active_positions and execute_highest_rr_trade.
+      2. Updated index_options_trade_engine.py to use getattr(kite, "PRODUCT_MIS", "MIS") and getattr(kite, "PRODUCT_NRML", "NRML").
+      3. Updated common/trading_core.py close_stock_position to safely resolve getattr(kite, "PRODUCT_CNC", "CNC") and getattr(kite, "PRODUCT_MIS", "MIS").
+    status: RESOLVED
