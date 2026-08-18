@@ -1786,3 +1786,38 @@ issues:
          NIFTY/BANKNIFTY/SENSEX chains still work; import smoke tests pass for both engines.
     status: RESOLVED
 
+  - id: BUGFIX-072
+    title: Option Dashboard (6060) Live Log Not Updating (log_tail stale behind cache)
+    severity: MEDIUM
+    category: Dashboard UI
+    family: UI
+    date_reported: "2026-08-18"
+    symptom: |
+      On Port 6060 Options Dashboard the Live Log tab appeared to never update even though
+      Trade_Option/output/logs/bull_nifty50_scanner.log and bull_index_trade_engine.log were
+      being appended every scan cycle. Dashboard polls /api/status → 200 every 3s, but the log
+      panel rendered no lines. Browser was authenticated (session valid); no errors in journalctl.
+    root_cause: |
+      api_status() served programs.<pid>.log_tail purely from cached_data["log_tail"], which is
+      only refreshed by the background refresh_data() thread. If that thread stalls on any earlier
+      section (load_positions / load_journal / compute_stats / get_all_trades) the log block
+      (which ran after those sections) is skipped each cycle, so the cache never receives the
+      growing log file tail. The Stock dashboard had the same design but with NO outer try/except
+      at all, so a single raising statement could kill the refresh thread permanently.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+    resolution: |
+      1. api_status() now reads tail_log() live per program (mtime-cached file read) with fallback
+         to cached_data["log_tail"], so the Live Log is always fresh on every poll regardless of
+         background-thread state (both dashboards).
+      2. refresh_data() reordered in both dashboards so the per-program log_tail/scans/scan_summary
+         block runs FIRST inside the data lock, before positions/journal/stats.
+      3. Trade_Stock/app_Sock_Trade.py refresh_data() wrapped in an outer try/except (logging.error
+         + continue loop) so no single failure can permanently kill the thread.
+      4. Live execution flags (nifty50_live.flag / index_live.flag) removed from VM + local to make
+         live order placement OFF by default; the dashboard Live toggle endpoints are unchanged and
+         re-create the flags when enabled on demand.
+    status: RESOLVED
+
+

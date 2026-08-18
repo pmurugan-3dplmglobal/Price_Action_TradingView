@@ -356,24 +356,25 @@ def parse_scans_for_program(log_lines, prog_id):
 def refresh_data():
     global cached_data, _ltp_last_fetch
     while True:
-        with data_lock:
-            pos = load_positions()
-            journal = load_journal()
-            cached_data["positions"] = pos
-            cached_data["journal"] = journal
-            cached_data["stats"] = compute_stats(pos, journal)
-            try:
-                all_t = trade_db.get_all_trades()
-                cached_data["all_trades"] = all_t
-            except Exception:
-                cached_data["all_trades"] = []
-            for pid in PROGRAMS:
-                log_file = PROGRAMS[pid].get("log_file")
-                log_lines = tail_log(log_file) if log_file else []
-                cached_data["log_tail"][pid] = log_lines
-                scan_lines, anchors, abc_matches = parse_scans_for_program(log_lines, pid)
-                cached_data["scans"][pid] = scan_lines
-                cached_data["scan_summary"][pid] = {"anchors": anchors, "abc_matches": abc_matches}
+        try:
+            with data_lock:
+                for pid in PROGRAMS:
+                    log_file = PROGRAMS[pid].get("log_file")
+                    log_lines = tail_log(log_file) if log_file else []
+                    cached_data["log_tail"][pid] = log_lines
+                    scan_lines, anchors, abc_matches = parse_scans_for_program(log_lines, pid)
+                    cached_data["scans"][pid] = scan_lines
+                    cached_data["scan_summary"][pid] = {"anchors": anchors, "abc_matches": abc_matches}
+                pos = load_positions()
+                journal = load_journal()
+                cached_data["positions"] = pos
+                cached_data["journal"] = journal
+                cached_data["stats"] = compute_stats(pos, journal)
+                try:
+                    all_t = trade_db.get_all_trades()
+                    cached_data["all_trades"] = all_t
+                except Exception:
+                    cached_data["all_trades"] = []
             today_str = dt.now().strftime("%Y-%m-%d")
             scan_display = {}
             try:
@@ -427,6 +428,8 @@ def refresh_data():
                 cached_data["active_positions"] = active_list
             except Exception:
                 pass
+        except Exception as outer_e:
+            logging.error(f"Outer refresh_data error: {outer_e}")
         if int(time.time()) % 3600 < REFRESH_SECONDS:
             auto_export_if_new_month()
         time.sleep(REFRESH_SECONDS)
@@ -2364,10 +2367,14 @@ def api_status():
         prog_status = {}
         for pid in PROGRAMS:
             pid_running = get_pid_for_program(pid) is not None
+            log_file = PROGRAMS[pid].get("log_file")
+            log_tail = tail_log(log_file) if log_file else []
+            if not log_tail:
+                log_tail = cached_data["log_tail"].get(pid, [])
             prog_status[pid] = {
                 "running": pid_running,
                 "scans": cached_data["scans"].get(pid, []),
-                "log_tail": cached_data["log_tail"].get(pid, []),
+                "log_tail": log_tail,
                 "scan_summary": cached_data["scan_summary"].get(pid, {"anchors": {}, "abc_matches": {}})
             }
         cfg = load_config()

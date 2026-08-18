@@ -336,6 +336,13 @@ def refresh_data():
     while True:
         try:
             with data_lock:
+                for pid in PROGRAMS:
+                    log_file = PROGRAMS[pid].get("log_file")
+                    log_lines = tail_log(log_file) if log_file else []
+                    cached_data["log_tail"][pid] = log_lines
+                    scan_lines, anchors, abc_matches = parse_scans_for_program(log_lines, pid)
+                    cached_data["scans"][pid] = scan_lines
+                    cached_data["scan_summary"][pid] = {"anchors": anchors, "abc_matches": abc_matches}
                 pos = load_positions()
                 journal = load_journal()
                 cached_data["positions"] = pos
@@ -347,13 +354,6 @@ def refresh_data():
                 except Exception as e:
                     logging.error(f"Error loading all_trades: {e}")
                     cached_data["all_trades"] = []
-                for pid in PROGRAMS:
-                    log_file = PROGRAMS[pid].get("log_file")
-                    log_lines = tail_log(log_file) if log_file else []
-                    cached_data["log_tail"][pid] = log_lines
-                    scan_lines, anchors, abc_matches = parse_scans_for_program(log_lines, pid)
-                    cached_data["scans"][pid] = scan_lines
-                    cached_data["scan_summary"][pid] = {"anchors": anchors, "abc_matches": abc_matches}
             today_str = dt.now().strftime("%Y-%m-%d")
             scan_display = {}
             try:
@@ -2326,10 +2326,14 @@ def api_status():
         prog_status = {}
         for pid in PROGRAMS:
             pid_running = get_pid_for_program(pid) is not None
+            log_file = PROGRAMS[pid].get("log_file")
+            log_tail = tail_log(log_file) if log_file else []
+            if not log_tail:
+                log_tail = cached_data["log_tail"].get(pid, [])
             prog_status[pid] = {
                 "running": pid_running,
                 "scans": cached_data["scans"].get(pid, []),
-                "log_tail": cached_data["log_tail"].get(pid, []),
+                "log_tail": log_tail,
                 "scan_summary": cached_data["scan_summary"].get(pid, {"anchors": {}, "abc_matches": {}})
             }
         cfg = load_config()
