@@ -1,11 +1,12 @@
 import json, os, time, threading
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 def _get_db_path():
     candidates = [
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Trade_Option", "output", "monitor", "trades_db.json")),
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "Trade_Stock", "output", "monitor", "trades_db.json")),
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "output", "monitor", "trades_db.json")),
-        os.path.join("output", "monitor", "trades_db.json")
+        os.path.join(BASE_DIR, "output", "monitor", "trades_db.json"),
+        os.path.join(BASE_DIR, "Trade_Option", "output", "monitor", "trades_db.json"),
+        os.path.join(BASE_DIR, "Trade_Stock", "output", "monitor", "trades_db.json"),
     ]
     for p in candidates:
         if os.path.exists(p):
@@ -21,9 +22,9 @@ def _get_db_path():
     for p in candidates:
         if os.path.exists(p):
             return p
-    return os.path.join("output", "monitor", "trades_db.json")
+    return os.path.join(BASE_DIR, "output", "monitor", "trades_db.json")
 
-TRADES_DB = "output/monitor/trades_db.json"
+TRADES_DB = os.path.join(BASE_DIR, "output", "monitor", "trades_db.json")
 
 def _read():
     db_path = _get_db_path()
@@ -42,9 +43,11 @@ def _read():
             time.sleep(0.05)
     return {"next_id": 1, "trades": []}
 
-ACTIVE_POSITIONS_DB = "output/monitor/active_positions_db.json"
-SCANNED_TRADES_DB = "output/monitor/scanned_trades_db.json"
-JOURNAL_TRADES_DB = "output/monitor/journal_trades_db.json"
+ACTIVE_POSITIONS_DB = os.path.join(BASE_DIR, "output", "monitor", "active_positions_db.json")
+SCANNED_TRADES_DB = os.path.join(BASE_DIR, "output", "monitor", "scanned_trades_db.json")
+JOURNAL_TRADES_DB = os.path.join(BASE_DIR, "output", "monitor", "journal_trades_db.json")
+CYCLE_STORE_FILE = os.path.join(BASE_DIR, "output", "monitor", "cycle_trades.json")
+EXECUTED_STORE_FILE = os.path.join(BASE_DIR, "output", "monitor", "executed_patterns.json")
 
 def _sync_tab_databases(db, db_dir=None):
     try:
@@ -115,9 +118,6 @@ def remove_trades(trade_ids):
 
 
 # ---- Cycle staging + executed-pattern registry (multi-cycle dedup) ----
-
-CYCLE_STORE_FILE = "output/monitor/cycle_trades.json"
-EXECUTED_STORE_FILE = "output/monitor/executed_patterns.json"
 
 _executed_cache = None
 _executed_cache_lock = threading.Lock()

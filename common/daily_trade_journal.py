@@ -95,7 +95,12 @@ def resolve_trade_pattern(symbol, contract="", default_pat=None, is_manual=False
     clean_sym = str(symbol or contract).replace(" ", "").upper()
 
     # 1. Search scan_display_data.json and scan_display_index.json
-    for path in ["output/monitor/scan_display_data.json", "output/monitor/scan_display_index.json"]:
+    for path in [
+        os.path.join(BASE_DIR, "output", "monitor", "scan_display_data.json"),
+        os.path.join(BASE_DIR, "output", "monitor", "scan_display_index.json"),
+        os.path.join(BASE_DIR, "output", "monitor", "scan_display_stock.json"),
+        os.path.join(BASE_DIR, "output", "monitor", "scan_display_stock_bear.json")
+    ]:
         if os.path.exists(path):
             try:
                 with open(path, encoding="utf-8") as f:
@@ -113,7 +118,7 @@ def resolve_trade_pattern(symbol, contract="", default_pat=None, is_manual=False
                 pass
 
     # 2. Search trade_journal.csv (historical scan beats)
-    j_path = os.path.join("output", "monitor", "trade_journal.csv")
+    j_path = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
     if os.path.exists(j_path):
         try:
             with open(j_path, "r", encoding="utf-8") as f:

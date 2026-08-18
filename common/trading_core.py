@@ -932,8 +932,8 @@ def scan_anchor_bcd_breakout(df_entry, df_anchor):
 def _record_completed_scan_trade(contract_name, pattern_label, entry, sl, target, rr, action_str, status_str, pnl_pct, entry_time, exit_time):
     try:
         import trade_db, csv
-        journal_db_path = os.path.join("output", "monitor", "journal_trades_db.json")
-        csv_path = os.path.join("output", "monitor", "trade_journal.csv")
+        journal_db_path = os.path.join(BASE_DIR, "output", "monitor", "journal_trades_db.json")
+        csv_path = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
         
         entry_row = {
             "Timestamp": exit_time or entry_time,
