@@ -1338,11 +1338,11 @@ HTML_TEMPLATE = """
 
             let logHtml = '';
             let allLogs = [];
-            if (logFilter === 'all' || logFilter === 'index') {
-                allLogs = allLogs.concat(d.programs?.index?.log_tail || []);
+            if (logFilter === 'all' || logFilter === 'daily') {
+                allLogs = allLogs.concat(d.programs?.daily?.log_tail || []);
             }
-            if (logFilter === 'all' || logFilter === 'nifty50') {
-                allLogs = allLogs.concat(d.programs?.nifty50?.log_tail || []);
+            if (logFilter === 'all' || logFilter === 'bear_trade') {
+                allLogs = allLogs.concat(d.programs?.bear_trade?.log_tail || []);
             }
             allLogs.forEach(l => { logHtml += '<div>'+l.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'; });
             document.getElementById('log-body').innerHTML = logHtml;
@@ -1453,11 +1453,11 @@ HTML_TEMPLATE = """
                 let logHtml = '';
                 let allLogs = [];
                 const lf = logFilter || 'all';
-                if (lf === 'all' || lf === 'index') {
-                    allLogs = allLogs.concat(d.programs?.index?.log_tail || []);
+                if (lf === 'all' || lf === 'daily') {
+                    allLogs = allLogs.concat(d.programs?.daily?.log_tail || []);
                 }
-                if (lf === 'all' || lf === 'nifty50') {
-                    allLogs = allLogs.concat(d.programs?.nifty50?.log_tail || []);
+                if (lf === 'all' || lf === 'bear_trade') {
+                    allLogs = allLogs.concat(d.programs?.bear_trade?.log_tail || []);
                 }
                 allLogs.forEach(l => { logHtml += '<div>'+l.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'; });
                 document.getElementById('log-body').innerHTML = logHtml || '<p class="empty-state">Waiting for log data...</p>';
@@ -2085,8 +2085,8 @@ HTML_TEMPLATE = """
                         <div style="display:flex;align-items:center;gap:6px;">
                             <select onchange="setFilter('log',this.value)" class="filter-select">
                                 <option value="all">All</option>
-                                <option value="index">Index</option>
-                                <option value="nifty50">Nifty 50</option>
+                                <option value="daily">Bullish</option>
+                                <option value="bear_trade">Bearish</option>
                             </select>
                             <button class="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
                         </div>

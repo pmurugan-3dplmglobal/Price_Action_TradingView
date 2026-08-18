@@ -1708,6 +1708,49 @@ issues:
       2. Built multi-timeframe candle fetcher and option chain discovery in common/fyers_data.py with rate-limiting, retry logic, and thread-safe in-memory caching.
       3. Updated Trade_Option/index_options_trade_engine.py and stock_options_trade_engine.py to scan ATM/near-ATM CE and PE option chart candles directly via parallel ThreadPoolExecutor workers.
       4. Algorithm applies 5 anchor detectors + A-B-C-D breakout detection directly to Option OHLCV charts, outputting true Option Entry (e.g. ₹34.30), Option SL (₹24.79), and Targets (₹57.90).
-      5. Enhanced TradingView chart launcher in Trade_Option/app_option_Trade.py to open contract-specific charts when clicking "CHART 📈".
+5. Enhanced TradingView chart launcher in Trade_Option/app_option_Trade.py to open contract-specific charts when clicking "CHART 📈".
+     status: RESOLVED
+
+  - id: BUGFIX-069
+    title: TradingView Dashboards Crash-Loop on VM (Missing fyers-apiv3 Dependency)
+    severity: HIGH
+    category: Deployment & Dependencies
+    date_reported: "2026-08-18"
+    symptom: |
+      sudo systemctl restart tradingview-options tradingview-stock left both services in
+      activating (auto-restart) with Main process exit status=1. systemd restart counter climbed to 40+.
+    root_cause: |
+      FEAT-068 added `from fyers_apiv3 import fyersModel` at import time in common/fyers_session.py
+      (imported from Trade_Option/app_option_Trade.py and Trade_Stock/app_Sock_Trade.py), but
+      fyers-apiv3 was not installed in ~/Price_Action_TradingView/venv and was never added to
+      Trade_Option/requirements.txt or Trade_Stock/requirements.txt, so module import failed.
+    affected_files:
+      - common/fyers_session.py
+      - Trade_Option/requirements.txt
+      - Trade_Stock/requirements.txt
+    resolution: |
+      1. Stopped the crash-looping units: sudo systemctl stop tradingview-options tradingview-stock.
+      2. Installed dependency: ~/Price_Action_TradingView/venv/bin/pip install fyers-apiv3 (3.1.16).
+      3. Restarted units and verified 6060/6061 listening and /api/status reachable (HTTP 401 auth gate = healthy).
+      4. Added fyers-apiv3>=3.1.0 to both requirements.txt files.
+    status: RESOLVED
+
+  - id: BUGFIX-070
+    title: Stock Dashboard (6061) Live Log Always Empty (program key mismatch)
+    severity: MEDIUM
+    category: Dashboard UI
+    date_reported: "2026-08-18"
+    symptom: |
+      Live Log tab on the Stock dashboard (Port 6061) showed "Waiting for log data..." even though
+      Trade_Stock/output/logs/bull_daily_scanner.log and bull_bear_daily_scanner.log had content.
+    root_cause: |
+      Trade_Stock/app_Sock_Trade.py inline JS hardcoded option-engine program keys
+      d.programs?.index?.log_tail / d.programs?.nifty50?.log_tail, but the Stock dashboard PROGRAMS
+      are keyed `daily` (bullish) and `bear_trade` (bearish), so log_tail was never read/built.
+    affected_files:
+      - Trade_Stock/app_Sock_Trade.py
+    resolution: |
+      Repointed both log concat blocks (logFilter/lf paths) and the Live Log filter dropdown from
+      index/nifty50 to daily/bear_trade so the tail of both stock scanner logs renders in the UI.
     status: RESOLVED
 
