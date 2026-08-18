@@ -248,10 +248,10 @@ def execute_index_entry(kite, pos):
             ask = float(depth[0].get("price", 0))
         price = round((ask if ask > 0 else ltp) * 1.005, 1)
         kite.place_order(
-            variety=kite.VARIETY_REGULAR, tradingsymbol=pos["contract"],
-            exchange=target_exch, transaction_type=kite.TRANSACTION_TYPE_BUY,
-            quantity=pos["lot_size"] * pos["position_size"], order_type=kite.ORDER_TYPE_LIMIT,
-            price=price, product=kite.PRODUCT_NRML
+            variety=getattr(kite, "VARIETY_REGULAR", "regular"), tradingsymbol=pos["contract"],
+            exchange=target_exch, transaction_type=getattr(kite, "TRANSACTION_TYPE_BUY", "BUY"),
+            quantity=pos["lot_size"] * pos["position_size"], order_type=getattr(kite, "ORDER_TYPE_LIMIT", "LIMIT"),
+            price=price, product=getattr(kite, "PRODUCT_NRML", "NRML")
         )
         return True
     except Exception as e:
@@ -327,7 +327,7 @@ def execute_highest_rr_trade(kite, staged):
 
 def monitor_active_positions(kite):
     return shared_monitor_positions(kite, INDEX_REGISTRY, ACTIVE_POSITIONS, position_lock,
-                                     kite.PRODUCT_MIS, "index", TIMEFRAME_ENTRY,
+                                     getattr(kite, "PRODUCT_MIS", "MIS"), "index", TIMEFRAME_ENTRY,
                                      trade_db, log_to_journal,
                                      live=LIVE_MARKET_DEPLOYMENT)
 

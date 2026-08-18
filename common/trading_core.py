@@ -1226,25 +1226,25 @@ def close_stock_position(kite, pos, live_market=True, product=None):
     except Exception as e:
         logging.warning(f"Could not fetch Kite stock position product for {contract}: {e}")
     if not target_product:
-        target_product = pos.get("product") or kite.PRODUCT_CNC
+        target_product = pos.get("product") or getattr(kite, "PRODUCT_CNC", "CNC")
     try:
-        q = kite.quote(f"{kite.EXCHANGE_NSE}:{contract}")
-        ltp = q[f"{kite.EXCHANGE_NSE}:{contract}"]["last_price"]
-        bid = q[f"{kite.EXCHANGE_NSE}:{contract}"]["depth"]["buy"][0]["price"]
+        q = kite.quote(f"{getattr(kite, 'EXCHANGE_NSE', 'NSE')}:{contract}")
+        ltp = q[f"{getattr(kite, 'EXCHANGE_NSE', 'NSE')}:{contract}"]["last_price"]
+        bid = q[f"{getattr(kite, 'EXCHANGE_NSE', 'NSE')}:{contract}"]["depth"]["buy"][0]["price"]
         price = round((bid if bid > 0 else ltp) * 0.995, 1)
         qty = pos.get("position_size", pos.get("quantity", 1))
         try:
             oid = kite.place_order(
-                variety=kite.VARIETY_REGULAR, tradingsymbol=contract,
-                exchange=kite.EXCHANGE_NSE, transaction_type=kite.TRANSACTION_TYPE_SELL,
-                quantity=qty, order_type=kite.ORDER_TYPE_LIMIT,
+                variety=getattr(kite, "VARIETY_REGULAR", "regular"), tradingsymbol=contract,
+                exchange=getattr(kite, "EXCHANGE_NSE", "NSE"), transaction_type=getattr(kite, "TRANSACTION_TYPE_SELL", "SELL"),
+                quantity=qty, order_type=getattr(kite, "ORDER_TYPE_LIMIT", "LIMIT"),
                 price=price, product=target_product
             )
             save_executed_exit(contract, oid, {"type": "LIMIT", "price": price, "qty": qty})
             logging.info(f"Closed stock {contract} with product {target_product} (Order ID: {oid})")
         except Exception as primary_err:
             logging.warning(f"Primary stock exit with {target_product} failed for {contract}: {primary_err}. Retrying with fallback...")
-            alt_product = kite.PRODUCT_MIS if target_product == kite.PRODUCT_CNC else kite.PRODUCT_CNC
+            alt_product = getattr(kite, "PRODUCT_MIS", "MIS") if target_product == getattr(kite, "PRODUCT_CNC", "CNC") else getattr(kite, "PRODUCT_CNC", "CNC")
             try:
                 oid = kite.place_order(
                     variety=kite.VARIETY_REGULAR, tradingsymbol=contract,

@@ -390,10 +390,10 @@ def execute_highest_rr_trade(kite, staged):
                 price = round((ask if ask > 0 else ltp) * 1.005, 1)
                 qty = best["lot_size"] * pos_size
                 oid = kite.place_order(
-                    variety=kite.VARIETY_REGULAR, tradingsymbol=contract,
-                    exchange=kite.EXCHANGE_NFO, transaction_type=kite.TRANSACTION_TYPE_BUY,
-                    quantity=qty, order_type=kite.ORDER_TYPE_LIMIT, price=price,
-                    product=kite.PRODUCT_NRML
+                    variety=getattr(kite, "VARIETY_REGULAR", "regular"), tradingsymbol=contract,
+                    exchange=getattr(kite, "EXCHANGE_NFO", "NFO"), transaction_type=getattr(kite, "TRANSACTION_TYPE_BUY", "BUY"),
+                    quantity=qty, order_type=getattr(kite, "ORDER_TYPE_LIMIT", "LIMIT"), price=price,
+                    product=getattr(kite, "PRODUCT_NRML", "NRML")
                 )
                 log_to_journal(sym, best["pattern"], TIMEFRAME_ENTRY, "BUY", "SUCCESS",
                                f"Order: {oid}, Qty: {qty}, {opt_type}@{target_strike}", entry=cp, sl=best["current_sl"], target=best["t1"], rr=avg_rr,
@@ -453,7 +453,7 @@ def run_anchor_scan(kite):
 
 def monitor_active_positions(kite):
     return shared_monitor_positions(kite, STOCK_REGISTRY, ACTIVE_POSITIONS, position_lock,
-                                     kite.PRODUCT_NRML, "nifty50", TIMEFRAME_ENTRY,
+                                     getattr(kite, "PRODUCT_NRML", "NRML"), "nifty50", TIMEFRAME_ENTRY,
                                      trade_db, log_to_journal, save_state,
                                      live=LIVE_MARKET_DEPLOYMENT)
 
