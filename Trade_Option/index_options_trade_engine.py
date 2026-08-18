@@ -13,7 +13,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 import numpy as np
 
-from kiteconnect import KiteConnect
 import trade_db
 
 from trading_core import (
@@ -526,12 +525,9 @@ def main():
         except Exception:
             BACKTEST_DATE = None
             logging.warning(f"Invalid --date value: {date_arg}")
-    if not anchor_only and BACKTEST_DATE is None and range_arg is None:
-        logging.info("Starting Index Trade Engine...")
     try:
-        api_key, access_token = load_kite_session()
-        kite = KiteConnect(api_key=api_key)
-        kite.set_access_token(access_token)
+        kite = None
+        logging.info("[OPEN_SOURCE] Open-source Yahoo Finance data feed active.")
         fetch_instruments(kite)
     except Exception as e:
         logging.error(f"Init failed: {e}")

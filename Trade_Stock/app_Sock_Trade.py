@@ -205,7 +205,7 @@ def set_backtest_mode(enabled):
         json.dump(cfg, f, indent=2)
 
 # ──────────────────────────────────────────────
-#  KITE TOKEN MANAGEMENT
+#  OPEN-SOURCE DATA FEED STATUS
 # ──────────────────────────────────────────────
 
 def check_token_valid():

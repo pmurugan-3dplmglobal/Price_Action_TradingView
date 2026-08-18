@@ -79,7 +79,7 @@ cd Price_Action_Strategy
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install kiteconnect pandas numpy flask openpyxl requests schedule
+pip install pandas numpy flask openpyxl requests schedule yfinance
 ```
 
 ---

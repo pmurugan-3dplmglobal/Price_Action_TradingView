@@ -13,10 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 import numpy as np
 
-from kiteconnect import KiteConnect
-
 LOOKBACK_DAYS = 120
-TOKEN_FILE = "input/kite_access_token.txt"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 TIMEFRAME_ENTRY = "day"
@@ -283,10 +280,8 @@ def main():
     logging.info("  NIFTY 50 DAILY TIMEFRAME SCANNER")
     logging.info("=" * 60)
     try:
-        ak, at = load_kite_session()
-        kite = KiteConnect(api_key=ak)
-        kite.set_access_token(at)
-        sync_stock_tokens(kite)
+        kite = None
+        logging.info("[OPEN_SOURCE] Open-source Yahoo Finance data feed active.")
         if anchor_only:
             logging.info("Running anchor-only scan (daily)...")
             run_anchor_scan(kite)

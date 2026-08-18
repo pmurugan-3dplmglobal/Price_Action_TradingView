@@ -52,19 +52,8 @@ def evaluate_spot_trend_and_t1(kite, underlying_symbol, timeframe="day"):
         elif underlying_symbol in STOCK_REGISTRY:
             token = STOCK_REGISTRY[underlying_symbol]["token"]
             
-        if not token and kite:
-            # Fallback: search NSE master if token missing
-            try:
-                insts = kite.instruments("NSE")
-                for item in insts:
-                    if item.get("tradingsymbol") == underlying_symbol and item.get("segment") == "NSE":
-                        token = int(item["instrument_token"])
-                        break
-            except Exception:
-                pass
-                
         if not token:
-            return "UNKNOWN", "N/A"
+            token = underlying_symbol
 
         from_date = (dt.now() - timedelta(days=365)).strftime("%Y-%m-%d")
         to_date = dt.now().strftime("%Y-%m-%d")
@@ -114,11 +103,7 @@ def enrich_scan_export_csv(input_csv_path, kite=None, output_csv_path=None):
         return None
         
     try:
-        if not kite:
-            ak, at = load_kite_session()
-            from kiteconnect import KiteConnect
-            kite = KiteConnect(api_key=ak)
-            kite.set_access_token(at)
+        kite = None
 
         df = pd.read_csv(input_csv_path)
         if df.empty:

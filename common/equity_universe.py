@@ -112,6 +112,11 @@ def get_universe_symbols_and_tokens(kite=None, target_index_name="NIFTY50"):
         for sym in missing_symbols:
             if sym in _NSE_TOKEN_CACHE:
                 token_map[sym] = _NSE_TOKEN_CACHE[sym]
+            else:
+                token_map[sym] = sym
+    else:
+        for sym in missing_symbols:
+            token_map[sym] = sym
 
     return symbols, token_map
 

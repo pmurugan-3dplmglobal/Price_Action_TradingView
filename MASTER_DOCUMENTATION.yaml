@@ -2,54 +2,69 @@
 # Consolidated Master Reference Blueprint (Single Source of Truth)
 
 meta:
-  name: Price Action Unified Strategy System (TradingView Open-Source Edition)
-  version: TradingView Open-Source v01 (Cloned from Prod Code v02)
-  platform: TradingView Open-Source + Yahoo Finance Data Feed (Zero API Key / Credentials Required)
-  architecture: Centralized Shared Core (common/) + Dual Workspaces (Trade_Option & Trade_Stock) + TradingView Interactive Charts
+  name: Price Action Unified Strategy System (TradingView Edition)
+  version: Prod Code v02 - Open-Source Edition
+  platform: TradingView / Yahoo Finance Open-Source Data Feeds (Zero Credentials Required)
+  architecture: Centralized Shared Core (common/) + Dual Workspaces (Trade_Option & Trade_Stock)
   strategy: Unified ABC Bullish & Bearish Reversal Pattern Engine
   coverage:
-    - Index Options & Spot (NIFTY, BANKNIFTY, SENSEX)
-    - Stock Options & Spot (50 Nifty 50 constituent stocks)
+    - Index Options (NIFTY, BANKNIFTY, SENSEX)
+    - Stock Options (50 Nifty 50 constituent stocks)
     - Stock Spot Bullish Reversals (stock_bullish_reversal_scanner.py)
     - Stock Spot Bearish Reversals (stock_bearish_reversal_scanner.py)
 
 architecture:
   diagram: |
-    Browser (localhost:6060 / localhost:6061)
-      ├── Trade_Option Dashboard (app_option_Trade.py: 6060)
+    Browser (localhost:5050 / localhost:5051)
+      ├── Trade_Option Dashboard (app_option_Trade.py: 5050)
       │     ├── Index Options Engine (index_options_trade_engine.py)
       │     └── Stock Options Engine (stock_options_trade_engine.py)
-      └── Trade_Stock Dashboard (app_Sock_Trade.py: 6061)
+      └── Trade_Stock Dashboard (app_Sock_Trade.py: 5051)
             ├── Stock Bull Reversal (stock_bullish_reversal_scanner.py)
             └── Stock Bear Reversal (stock_bearish_reversal_scanner.py)
                   │
                   ▼
           Centralized Shared Core (common/)
-            ├── trading_core.py (Scanners, Negation Theory, Resampling, Registries, Generic Yahoo/CSV Data Fetcher)
+            ├── trading_core.py (Scanners, Negation Theory, Resampling, Registries)
             ├── trade_db.py (Thread-safe JSON persistence & staging)
-            └── spot_enricher.py (CSV Export Spot Trend & Target Annotator)
+            └── dashboard_sl_overrides.py (Shared SL/T1/T2/T3 override read/write)
 
   directory:
     common:
-      trading_core.py: "Centralized strategy core: scan_anchor_bcd_breakout_generic, 5 Bullish + 5 Bearish anchor detectors, find_profit_targets, find_profit_targets_bearish, resample_timeframe (4h), get_adaptive_lookback, STOCK_REGISTRY (50 stocks), INDEX_REGISTRY (NIFTY, BANKNIFTY, SENSEX), session loading, market hours check, journal writer"
-      trade_db.py: "Thread-safe JSON trade database, cycle staging, and executed pattern deduplication"
+      paths.py: "Single source of truth for canonical system file paths across engines and dashboards (TRADES_DB, ACTIVE_POSITIONS_DB, SCAN_DISPLAY_*, TOKEN_FILE, etc.)"
+      ema_engine.py: "13 EMA & 44 EMA crossover scanner and display output builder for options (5050) and stock spot (5051) modes"
+      trading_core.py: "Centralized strategy core: scan_anchor_bcd_breakout_generic, 5 Bullish + 5 Bearish anchor detectors, find_profit_targets, find_profit_targets_bearish, resample_timeframe (4h), get_adaptive_lookback, STOCK_REGISTRY (50 stocks), INDEX_REGISTRY (NIFTY, BANKNIFTY, SENSEX), _HISTORICAL_CANDLE_CACHE (TTL RAM caching), is_market_open (09:15-15:30 IST execution guard), session loading, journal writer"
+      trade_db.py: "Thread-safe JSON trade database, cycle staging, duplicate active position rejection, expired position purging, and executed pattern deduplication"
+      dashboard_sl_overrides.py: "Shared read/write of user-edited SL/T1/T2/T3 overrides (sl_target_overrides.json) used by both dashboards"
+    Kite_Access_Token_gen.py: "Zerodha Kite OAuth access token generator CLI (single canonical root-level copy)"
     Trade_Option:
-      app_option_Trade.py: "Options Dashboard (port 6060) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
+      app_option_Trade.py: "Options Dashboard (port 5050) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade). Chart modal (/api/get-chart-data) renders direction-aware A-B-C-D markers + benchmark Entry line (A.high/A.low) + benchmark-based SL%/RR."
       index_options_trade_engine.py: "Intraday index options engine (NIFTY, BANKNIFTY, SENSEX with BFO exchange routing)"
       stock_options_trade_engine.py: "Nifty 50 stock options scanner & executor"
       automated_strategy_exporter.py: "Plan 1 Multi-Timeframe Automated Daily Exporter (Index: 3m/5m/15m, Stock Option: 15m/60m)"
       run_export_scheduler_daemon.py: "Background Scheduler Daemon for 10:30 AM, 1:00 PM, and 3:15 PM exports"
     Trade_Stock:
-      app_Sock_Trade.py: "Stock Trade Dashboard (port 6061) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
+      app_Sock_Trade.py: "Stock Trade Dashboard (port 5051) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
       stock_bullish_reversal_scanner.py: "Stock Bullish Reversal Scanner & Exporter"
       stock_bearish_reversal_scanner.py: "Stock Bearish Reversal Scanner & Exporter"
     backtest:
-      run_master_backtest.py: "Yahoo Finance / Generic Open-Source Master Backtest Engine (Zero API Keys Required)"
+      description: "Official Historical Validation Suite for multi-day option strike backtests, Yahoo/Kite historical candle runners, and simulation engines"
+      run_official_option_strike_backtest.py: "Official Multi-day Option Strike & Spot Backtest Runner"
+      run_kite_master_backtest.py: "Kite Connect API Historical Multi-day Backtest Suite"
+      run_master_backtest.py: "Yahoo Finance / Historical Data Master Backtest Engine"
       backtest_simulation.py: "Parallelized Stock Options & Spot Simulation Engine"
       master_backtest_results.json: "JSON Export of latest master backtest run results"
       test_fetch.py: "Quick Yahoo Finance API candle fetch test script"
-      run_official_option_strike_backtest.py: "Official Multi-day Option Strike & Spot Backtest Runner (Optional external API support)"
-      run_kite_master_backtest.py: "Historical Multi-day Backtest Suite (Optional external API support)"
+      test_option_strike_fetch.py: "Zerodha NFO Option Strike token & candle fetch test script"
+      test_spot_scan.py: "Spot & Option pattern scanner verification test script"
+    scratch:
+      description: "Temporary Diagnostic Scripts & Re-usable Maintenance Utilities for debug, audit, process checking, and batch target updates"
+      analyze_all_active.py: "Active position metrics analysis utility"
+      apply_30m_targets_to_all_active.py: "Batch target updater for active trades"
+      audit_targets.py: "Target calculation auditor script"
+      check_procs.py: "Python background process checker"
+      export_and_exit_all.py: "Bulk trade exit & export helper script"
+      read_active_pos.py: "Active position JSON state inspector"
 
 config_precedence:
   priority_1: "Manual UI User Edits (overrides in sl_target_overrides.json & active_positions_db.json)"
@@ -57,7 +72,7 @@ config_precedence:
   priority_3: "Adaptive Defaults (calculated dynamically based on active timeframe & asset class)"
 
 timeframe_resampling:
-  native_data_tfs: ["minute", "3minute", "5minute", "10minute", "15minute", "30minute", "60minute", "day"]
+  native_kite_tfs: ["minute", "3minute", "5minute", "10minute", "15minute", "30minute", "60minute", "day"]
   resampled_tfs:
     "75min": "Resampled from 15minute candles into 75min bars (5 candles/day: 09:15-10:30, 10:30-11:45, 11:45-13:00, 13:00-14:15, 14:15-15:30) using Pandas resample('75min', offset='15min')"
     "4hr": "Resampled from 60minute candles into 240min bars using Pandas resample('240min')"
@@ -108,18 +123,29 @@ engines:
     instruments: "Nifty 50 Constituent Stocks (Spot)"
     defaults: {timeframe_entry: "day", timeframe_anchor: "day", lookback_days: 2000}
 
+  case_e_stock_ema:
+    id: "ema_engine"
+    name: "Stock EMA Engine (13 EMA / 44 EMA Crossover)"
+    file: "common/ema_engine.py"
+    asset_class: "STOCK_OPTION / STOCK_SPOT"
+    side: "BULL / BEAR"
+    instruments: "Nifty 50 Constituent Stocks & Options"
+    defaults: {timeframe: "1d", fast_ema: 13, slow_ema: 44, scan_interval: 300}
+
 backtest_suite:
   directory: "backtest/"
   runners:
-    master_runner: "backtest/run_master_backtest.py (Generic Open-Source / Yahoo Finance Data)"
+    official_strike_runner: "backtest/run_official_option_strike_backtest.py"
+    kite_historical_runner: "backtest/run_kite_master_backtest.py"
+    master_runner: "backtest/run_master_backtest.py"
     simulation_engine: "backtest/backtest_simulation.py"
-    kite_historical_runner: "backtest/run_kite_master_backtest.py (Optional external API support)"
-    official_strike_runner: "backtest/run_official_option_strike_backtest.py (Optional external API support)"
   output:
     results_json: "backtest/master_backtest_results.json"
     exports_csv: "Trade_Option/output/exports/"
   tests:
-    - "backtest/test_fetch.py (Yahoo Finance Data Fetch Test)"
+    - "backtest/test_fetch.py"
+    - "backtest/test_option_strike_fetch.py"
+    - "backtest/test_spot_scan.py"
 
   strategy_rules:
     core_architectural_thumb_rule:
@@ -129,6 +155,20 @@ backtest_suite:
         - "Engine Separation: Index Options Engine (index_options_trade_engine.py / app_option_Trade.py) and Stock Options Engine (stock_options_trade_engine.py / app_Sock_Trade.py) must maintain clear workspace and display isolation."
         - "Default View Integrity: Web UI dashboards must default their view filters to their corresponding core engine (Index Dashboard defaults to 'Index', Stock Dashboard defaults to 'Nifty 50')."
         - "Independent Testing: Any new API endpoint or scanner tool must be tested in isolation to verify zero side-effects on active trade execution, position recovery, and display files."
+
+    canonical_path_integrity:
+      rule_name: "Canonical Path Consolidation (common/paths.py)"
+      fundamental_principle: "All modules MUST import file paths from common/paths.py to eliminate CWD-dependent file location splits."
+      enforcement_guidelines:
+        - "All engines, scanners, dashboards, and background processes must resolve output paths via common/paths.py."
+        - "Guarantees zero path split-brain bugs between root and workspace-relative directories."
+
+    active_trade_guards:
+      rule_name: "Active Trade Invariants & Data Safeguards"
+      duplication_guard: "create_trade(..., allow_duplicate=False) rejects duplicate ACTIVE contracts per engine."
+      expiry_purge: "purge_expired_positions() automatically clears expired option contracts."
+      entry_time_sanitization: "sanitize_entry_time() guarantees entry_time represents the true execution timestamp to prevent pre-buy candle evaluation errors."
+      one_click_buy_preservation: "1-Click BUY captures and preserves candle_a_time, benchmark, anchor_floor, and direction while guarding against expired contract purchases."
 
     anchor_selection_and_invalidation:
       rule_name: "Universal Anchor Validity & Activity Rule (is_anchor_valid_and_active)"
@@ -226,7 +266,7 @@ registries:
   indices:
     NIFTY: {token: 256265, lot_size: 65, strike_step: 50, exchange: "NFO"}
     BANKNIFTY: {token: 260105, lot_size: 30, strike_step: 100, exchange: "NFO"}
-    SENSEX: {token: 265, lot_size: 10, strike_step: 100, exchange: "BFO"}
+    SENSEX: {token: 265, lot_size: 20, strike_step: 100, exchange: "BFO"}
   stocks:
     count: 50
     constituents: "All 50 Nifty 50 stocks with auto-sync from Zerodha NSE instrument master"
@@ -234,8 +274,8 @@ registries:
 deployment:
   cloud_provider: "Oracle Cloud Always Free (4 ARM cores, 24GB RAM, Ubuntu 24.04)"
   ports:
-    options_dashboard: 6060
-    stock_dashboard: 6061
+    options_dashboard: 5050
+    stock_dashboard: 5051
 
 pattern_shorthands:
   description: "Explicit pattern codes used in UI Dashboard table & CSV Export to prevent ambiguity between Bullish and Bearish setups"
@@ -253,6 +293,15 @@ pattern_shorthands:
     BEAR_STAR: "Shooting Star / Bearish Baby Setup (find_anchor_shooting_star_baby)"
     BEAR_HAR: "Bearish Harami Setup (find_anchor_bearish_harami)"
   csv_export_alignment: "CSV exports match UI display table 1-to-1 in column order, numeric rounding (2 decimal places), formatted DD-MM-YY HH:MM timestamps, Yes/No CarryForward, and explicit pattern shorthands"
+
+scan_display_anchor_fields:
+  description: "Engine-persisted anchor fields on every staged trade / position so the chart modal mirrors the engine's confirmed setup exactly"
+  benchmark: "Breakout threshold = A.high for CE/BULL, A.low for PE/BEAR. Chart Entry price line draws here (label 'Entry (A.high)' / 'Entry (A.low)')."
+  anchor_floor: "Sequence-integrity floor = A.low for BULL, A.high for BEAR. Breach triggers the chart 'Seq broken' marker."
+  direction: "\"BULL\" or \"BEAR\". Drives direction-aware A-B-C-D marker detection (BEAR is a mirrored mirror: B = Close < A.low, C = retest holding below A.high, D = red Close < A.low)."
+  flow: "scan_anchor_bcd_breakout / _bearish -> scan_symbol -> write_scan_display_data.build_trade -> staged JSON -> dashboard chart modal. Position dicts (incl. KITE_RECOVERED) persist them too."
+  chart_risk_math: "SL% / T1 RR / footer R:R computed against the benchmark (not the actual entry) for strategy-consistent risk math."
+  golden_rule: "UI MUST NOT re-derive A.high/A.low from candle_a_time (anchor detectors may return a different candle than the engine's a_idx benchmark). The engine's persisted benchmark is the single source of truth."
 
 sl_buffer_scaling:
   description: "Dynamic asset & price-tiered Stop Loss buffer (calculate_sl_buffer) to prevent SL inflation on cheap option contracts"

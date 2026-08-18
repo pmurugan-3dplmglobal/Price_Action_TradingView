@@ -1,7 +1,7 @@
 Don't make any change directly lets discuss (add any point/idea ) finally we can implement
 Read :DOCUMENTATION.yaml/DOCUMENTATION_STOCK.yaml for understanding 
 Update :ISSUE_MANAGEMENT.yaml whenever you fix any bug or add feature 
-commit :to git with propre notes  
+commit :to git with prope notes  
 
 
 Rule : Skip completed for coding purpose , read rest and mark  as completed if implemented .

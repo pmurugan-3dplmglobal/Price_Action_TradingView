@@ -13,7 +13,6 @@ from datetime import datetime as dt, timedelta, time as datetime_time
 import pandas as pd
 import numpy as np
 
-from kiteconnect import KiteConnect
 import trade_db
 
 from trading_core import (
@@ -230,7 +229,7 @@ def resolve_option_strikes(symbol, spot_price, step_size, option_type, n_range):
 # ──────────────────────────────────────────────
 
 def close_position(kite, pos):
-    return shared_close_position(kite, pos, LIVE_MARKET_DEPLOYMENT, kite.PRODUCT_NRML)
+    return shared_close_position(kite, pos, LIVE_MARKET_DEPLOYMENT, getattr(kite, "PRODUCT_NRML", "NRML"))
 
 def _derive_sl_targets_for_symbol(kite, symbol, entry_price):
     return derive_sl_targets_for_symbol(kite, symbol, entry_price, STOCK_REGISTRY, TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR, LOOKBACK_DAYS, lambda sym, sp, step, opt, r: resolve_option_strikes(sym, sp, step, opt, r))
@@ -674,12 +673,9 @@ def main():
         except Exception:
             BACKTEST_DATE = None
             logging.warning(f"Invalid --date value: {date_arg}")
-    if not anchor_only and BACKTEST_DATE is None and range_arg is None:
-        logging.info("Starting Nifty 50 Stock Scanner + Executor")
     try:
-        ak, at = load_kite_session()
-        kite = KiteConnect(api_key=ak)
-        kite.set_access_token(at)
+        kite = None
+        logging.info("[OPEN_SOURCE] Open-source Yahoo Finance data feed active.")
         sync_instruments(kite)
         if BACKTEST_DATE is None:
             load_state()

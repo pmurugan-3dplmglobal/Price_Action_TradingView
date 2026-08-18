@@ -13,7 +13,6 @@ COMMON_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "comm
 if COMMON_DIR not in sys.path:
     sys.path.insert(0, COMMON_DIR)
 
-from kiteconnect import KiteConnect
 import trade_db
 
 from trading_core import (
@@ -187,16 +186,9 @@ def execute_scheduled_export(slot_name=None):
 
     logging.info(f"Starting Automated Strategy Export for Slot [{slot_name}] -> Directory: {slot_dir}")
 
-    try:
-        api_key, access_token = load_kite_session()
-        kite = KiteConnect(api_key=api_key)
-        kite.set_access_token(access_token)
-        sync_instruments(kite)
-    except Exception as e:
-        logging.error(f"Kite session authentication failed: {e}")
-        print(f"\n[ERROR] Authentication failed: {e}")
-        print("Please run common/Kite_Access_Token_gen.py to generate today's access token.")
-        return
+    kite = None
+    logging.info("[OPEN_SOURCE] Open-source Yahoo Finance data feed active.")
+    sync_instruments(kite)
 
     index_jobs = [
         {"tag": "3min",  "tf": "3minute"},

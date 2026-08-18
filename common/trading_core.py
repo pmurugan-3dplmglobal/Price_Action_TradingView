@@ -16,8 +16,9 @@ logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 #  CONSTANTS & REGISTRIES
 # ──────────────────────────────────────────────
 
-TOKEN_FILE = "input/kite_access_token.txt"
-JOURNAL_FILE = "output/monitor/trade_journal.csv"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TOKEN_FILE = os.path.join(BASE_DIR, "input", "kite_access_token.txt")
+JOURNAL_FILE = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
 
 LOOKBACK_LIMITS = {
     "minute": 60,
@@ -307,8 +308,8 @@ def ensure_kite_session(kite, token_file=TOKEN_FILE):
         pass
 
 
-def log_to_journal(symbol, pattern, timeframe, action, status, details="", pnl_pct=0.0, entry="", sl="", target="", rr="", journal_file=JOURNAL_FILE, lock=None, event_time=None):
-    file_exists = os.path.exists(journal_file)
+def log_to_journal(symbol, pattern, timeframe, action, status, details="", pnl_pct=0.0, entry="", sl="", target="", rr="", journal_file=None, lock=None, event_time=None):
+    target_journal_file = os.path.abspath(journal_file or JOURNAL_FILE)
     headers = ["Timestamp", "Symbol", "Pattern", "Timeframe", "Action", "Status", "Entry", "SL", "Target", "RR", "Details", "P&L %"]
     if event_time is not None:
         raw = str(event_time).replace('T', ' ')
@@ -329,13 +330,13 @@ def log_to_journal(symbol, pattern, timeframe, action, status, details="", pnl_p
     ]
     def _write():
         try:
-            p_dir = os.path.dirname(os.path.abspath(journal_file))
+            p_dir = os.path.dirname(target_journal_file)
             if p_dir:
                 os.makedirs(p_dir, exist_ok=True)
-            file_exists = os.path.exists(journal_file)
-            with open(journal_file, mode="a", newline="", encoding="utf-8") as f:
+            f_exists = os.path.exists(target_journal_file)
+            with open(target_journal_file, mode="a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f, delimiter="\t")
-                if not file_exists:
+                if not f_exists:
                     writer.writerow(headers)
                 writer.writerow(row)
         except Exception as e:
@@ -1713,7 +1714,12 @@ def lookup_scan_sl_target(contract, symbol, engine, kite=None, entry_price=0, ti
     except Exception:
         pass
 
-    paths = {"index": "output/monitor/scan_display_index.json", "nifty50": "output/monitor/scan_display_data.json"}
+    paths = {
+        "index": os.path.join(BASE_DIR, "output", "monitor", "scan_display_index.json"),
+        "nifty50": os.path.join(BASE_DIR, "output", "monitor", "scan_display_data.json"),
+        "daily": os.path.join(BASE_DIR, "output", "monitor", "scan_display_stock.json"),
+        "bear_trade": os.path.join(BASE_DIR, "output", "monitor", "scan_display_stock_bear.json")
+    }
     path = paths.get(engine)
     if path and os.path.exists(path):
         try:
