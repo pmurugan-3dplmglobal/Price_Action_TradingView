@@ -15,7 +15,9 @@
     "scan_interval": 15,
     "risk_percent": 1,
     "capital": 100000,
-    "strike_range": 0
+    "strike_range": 0,
+    "enable_swingfilter": true,
+    "min_cascading_waves": 3
   },
   "nifty50": {
     "timeframe_entry": "30minute",
@@ -24,6 +26,8 @@
     "scan_interval": 30,
     "risk_percent": 10,
     "capital": 100000,
-    "strike_range": 1
+    "strike_range": 1,
+    "enable_swingfilter": true,
+    "min_cascading_waves": 3
   }
 }

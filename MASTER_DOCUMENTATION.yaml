@@ -310,3 +310,18 @@ sl_buffer_scaling:
     mid_options: "₹50 <= Price < ₹200: max(0.50, Price * 1.5%)"
     high_options_stock: "₹200 <= Price < ₹500: max(1.00, Price * 1.0%)"
     index_spot: "Price >= ₹500: max(2.00, Price * 0.5%)"
+
+parabolic_swing_filter_phase_0:
+  description: "Phase 0 Parabolic Multi-Swing Curve & Macro Cascade Exhaustion Filter (parabolic_curve_filter.py)"
+  config_key: "enable_swingfilter"
+  core_rules:
+    curvature_polynomial_fit: "Fits 2nd-degree polynomial y = ax^2 + bx + c across swing waves. Bull: concave down (a < 0) exhaustion domes; Bear: concave up (a > 0) rally cups. Goodness of fit R^2 >= 0.55 and vertex in central 15%-85% window."
+    macro_cascade: "Bull: Progressive lower highs (Peak1 > Peak2 > Peak3) with lower lows. Bear: Progressive higher lows (Trough1 < Trough2 < Trough3) with higher highs."
+    terminal_base_absorption: "Point 4 terminal swing absorption check (|Base_last - Base_prev| / Base <= 2%)."
+    anchor_timeframe_execution: "Evaluated strictly on the Anchor Timeframe (df_anchor) before scanning Anchor A and B-C-D."
+    recency_gatekeeper: "Terminal swing must form recently (max_bars_since_base <= 18) to reject stale historical swings."
+    sequence_gatekeeper: "Anchor Candle (A) timestamp MUST be >= 4th/terminal swing date (is_anchor_after_terminal_base)."
+  ui_display:
+    badge: "🌊 4S / 🌊 3S+Abs badge displayed in the Parabolic column on Dashboards (Ports 6060 & 6061)."
+    today_scan_isolation: "Today's Scanned Setups strictly reflects fresh live scan matches. Open positions are decoupled and tracked on Live Positions tab."
+

@@ -1849,4 +1849,44 @@ issues:
       dashboards are fixed; engines must be restarted to load the new module.
     status: RESOLVED
 
+  - id: FEAT-074
+    title: Parabolic Multi-Swing Curve & Cascade Structure Detection Filter (Phase 0)
+    severity: LOW
+    category: Strategy & Indicator Logic
+    family: SIGNAL_GENERATION
+    date_reported: "2026-08-18"
+    symptom: |
+      Need macro cycle exhaustion validation before Anchor (A) and B-C-D breakout to filter out
+      low-probability traps and linear momentum dumps.
+    root_cause: N/A (New Feature)
+    affected_files:
+      - common/parabolic_curve_filter.py
+      - common/trading_core.py
+      - Trade_Stock/input/program_config.json
+      - Trade_Stock/app_Sock_Trade.py
+      - Trade_Stock/stock_bullish_reversal_scanner.py
+      - Trade_Stock/stock_bearish_reversal_scanner.py
+      - Trade_Option/stock_options_trade_engine.py
+      - Trade_Option/index_options_trade_engine.py
+      - Trade_Option/app_option_Trade.py
+      - scratch/test_parabolic_curve.py
+    resolution: |
+      1. Implemented common/parabolic_curve_filter.py with:
+         - is_parabolic_arch_enhanced: 2nd-degree polynomial fit (y = ax^2 + bx + c), concave down (a < 0) for
+           bullish selloff exhaustion dome or concave up (a > 0) for bearish rally cup, vertex in central 15%-85%
+           range, R^2 >= 0.55 goodness-of-fit.
+         - extract_swing_pivots: fractal extrema detection with rolling windows and adjacent deduplication.
+         - validate_parabolic_cascade_structure: verifies macro lower-high cascade (Bull) or higher-low cascade (Bear)
+           and Point 4 Terminal Absorption Base (<2% diff).
+         - detect_parabolic_multi_swings: top-level Phase 0 orchestrator with recency enforcement (max_bars_since_base <= 18).
+         - is_anchor_after_terminal_base: ensures Anchor Candle A forms AT or AFTER the 4th swing (terminal base).
+      2. Re-exported in common/trading_core.py for unified access across scanners and engines.
+      3. Integrated into Trade_Stock/stock_bullish_reversal_scanner.py and stock_bearish_reversal_scanner.py as Phase 0
+         filter with configurable enable_swingfilter, min_cascading_waves, and min_r2 in program_config.json.
+      4. Integrated into Trade_Option/stock_options_trade_engine.py and index_options_trade_engine.py to evaluate
+         Option premium charts on the Anchor Timeframe before Anchor A & B-C-D breakout staging.
+      5. Enriched both Stock (6061) and Option (6060) dashboards with Parabolic column and '🌊 4S' badge display.
+      6. Full unit test suite created in scratch/test_parabolic_curve.py with 100% pass rate.
+    status: RESOLVED
+
 

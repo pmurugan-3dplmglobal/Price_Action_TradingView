@@ -59,11 +59,15 @@ PROGRAMS = {
         "config_fields": {
             "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "3minute"},
             "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "15minute"},
-            "lookback_days": {"label": "Lookback Days", "type": "number", "default": 30},
-            "scan_interval": {"label": "Scan Interval (s)", "type": "number", "default": 15},
-            "risk_percent": {"label": "Risk %", "type": "number", "default": 1.0},
             "capital": {"label": "Capital", "type": "number", "default": 100000.0},
-            "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0}
+            "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0},
+            "enable_swingfilter": {
+                "label": "Parabolic Multi-Swing Filter",
+                "type": "select",
+                "options": ["true", "false"],
+                "default": "true"
+            },
+            "min_cascading_waves": {"label": "Min Cascading Waves", "type": "number", "default": 3}
         }
     },
     "nifty50": {
@@ -75,11 +79,15 @@ PROGRAMS = {
         "config_fields": {
             "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "15minute"},
             "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "30minute"},
-            "lookback_days": {"label": "Lookback Days", "type": "number", "default": 30},
-            "scan_interval": {"label": "Scan Interval (s)", "type": "number", "default": 300},
-            "risk_percent": {"label": "Risk %", "type": "number", "default": 1.0},
             "capital": {"label": "Capital", "type": "number", "default": 100000.0},
-            "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0}
+            "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0},
+            "enable_swingfilter": {
+                "label": "Parabolic Multi-Swing Filter",
+                "type": "select",
+                "options": ["true", "false"],
+                "default": "true"
+            },
+            "min_cascading_waves": {"label": "Min Cascading Waves", "type": "number", "default": 3}
         }
     }
 }
@@ -938,7 +946,7 @@ HTML_TEMPLATE = """
 
             const filter = (document.getElementById('scan-engine-filter') || {}).value || 'all';
             let scanHtml = '';
-            const colHeaders = '<th onclick="sortTable(this,0)">Symbol</th><th onclick="sortTable(this,1)">Contract</th><th onclick="sortTable(this,2)">Side</th><th onclick="sortTable(this,3)">Entry</th><th onclick="sortTable(this,4)">SL</th><th onclick="sortTable(this,5)">T1</th><th onclick="sortTable(this,6)">T2</th><th onclick="sortTable(this,7)">T3</th><th onclick="sortTable(this,8)">AncherT</th><th onclick="sortTable(this,9)">EntryTime</th><th onclick="sortTable(this,10)">Result</th><th onclick="sortTable(this,11)">CF</th><th onclick="sortTable(this,12)">RR</th><th style="text-align:center">Action</th>';
+            const colHeaders = '<th onclick="sortTable(this,0)">Symbol</th><th onclick="sortTable(this,1)">Contract</th><th onclick="sortTable(this,2)">Side</th><th onclick="sortTable(this,3)">Entry</th><th onclick="sortTable(this,4)">SL</th><th onclick="sortTable(this,5)">T1</th><th onclick="sortTable(this,6)">T2</th><th onclick="sortTable(this,7)">T3</th><th onclick="sortTable(this,8)">AncherT</th><th onclick="sortTable(this,9)">EntryTime</th><th onclick="sortTable(this,10)">Result</th><th onclick="sortTable(this,11)">Parabolic</th><th onclick="sortTable(this,12)">CF</th><th onclick="sortTable(this,13)">RR</th><th style="text-align:center">Action</th>';
             function tradeRow(t, resultBadge, eng) {
                 let entry = t.strike !== undefined && t.strike !== null && t.strike !== '' ? t.strike : '-';
                 if (entry === '-') {
@@ -985,12 +993,14 @@ HTML_TEMPLATE = """
                 else if (res === 'SCAN_READY') res = 'BULL_ENG';
                 const cf = t.carry_forward ? 'Yes' : 'No';
                 const rr = t.rr !== undefined && t.rr !== null ? parseFloat(t.rr).toFixed(2) : '0.00';
+                const para = t.parabolic_score || (t.parabolic_waves ? `🌊 ${t.parabolic_waves}S` : '-');
+                const paraBadge = (para && para !== '-' && para !== 'N/A') ? `<span class="badge" style="background:#1f6feb;color:#fff;font-size:10px;font-weight:600;">${para}</span>` : '<span style="color:#8b949e">-</span>';
 
                 const symName = t.symbol || '';
                 const symLink = `<a href="javascript:void(0)" onclick="openFyersChart('${symName}', '${t.contract||''}')" style="color:#58a6ff;font-weight:bold;text-decoration:none;" title="Click to view Fyers chart">${symName}</a>`;
                 let actCell = `<td style="text-align:center;white-space:nowrap;"><button class="btn-buy" onclick="openFyersChart('${symName}', '${t.contract||''}')" style="background:#00c288;color:#ffffff;border:none;padding:4px 9px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;margin-right:4px;" title="Open Fyers Live Web Chart">FYERS 📊</button><button class="btn-buy" onclick="openTVChart('${symName}', '${t.contract||''}')" style="background:#2962ff;color:#ffffff;border:none;padding:4px 9px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;" title="View in Embedded TradingView Panel">TV 📈</button></td>`;
 
-                return `<tr><td>${symLink}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
+                return `<tr><td>${symLink}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${paraBadge}</td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
             }
             const engines = filter === 'all' ? ['nifty50', 'index'] : [filter];
             engines.forEach(eng => {
@@ -2008,7 +2018,7 @@ HTML_TEMPLATE = """
             <div id="scan-tab-left" class="left-tab-content active">
                 <div class="section-panel">
                     <div class="section-header">
-                        <span>Trade Details</span>
+                        <span>Today's Scanned Setups</span>
                         <div style="display:flex;gap:12px;align-items:center">
                             <select id="scan-engine-filter" onchange="renderScanTab()" class="filter-select" style="width:auto">
                                 <option value="all" selected>All Options</option>

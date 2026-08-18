@@ -5,13 +5,19 @@
     "product_type": "CNC",
     "target_index": "NIFTY50",
     "timeframe": "day",
-    "lookback_days": 2000
+    "lookback_days": 2000,
+    "enable_swingfilter": true,
+    "min_cascading_waves": 3,
+    "min_r2": 0.55
   },
   "bear_trade": {
     "product_type": "CNC",
     "target_index": "NIFTY50",
     "timeframe": "day",
-    "lookback_days": 2000
+    "lookback_days": 2000,
+    "enable_swingfilter": true,
+    "min_cascading_waves": 3,
+    "min_r2": 0.55
   },
   "_backtest": false,
   "index": {

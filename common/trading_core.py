@@ -1798,7 +1798,10 @@ def write_scan_display_data(staged, active, display_file, engine_name=None):
                 "rr": round(rr, 2),
                 "candle_a_time": clean_timestamp(t.get("candle_a_time") or t.get("CandleATime") or t.get("entry_time", "")),
                 "timeframe": t.get("timeframe", ""),
-                "candle_tf_time": t.get("candle_tf_time", "")
+                "candle_tf_time": t.get("candle_tf_time", ""),
+                "parabolic_score": t.get("parabolic_score") or t.get("Parabolic_Score", "N/A"),
+                "parabolic_waves": t.get("parabolic_waves") or t.get("Parabolic_Waves", 0),
+                "terminal_base": t.get("terminal_base") or t.get("Terminal_Base", False)
             }
         new_staged = [build_trade(t, t.get("pattern", "BE_ABCD"), t.get("entry_time", now_str), None) for t in (staged or [])]
         carry_fwd = []
@@ -1823,16 +1826,7 @@ def write_scan_display_data(staged, active, display_file, engine_name=None):
         def _trade_key(t):
             return str(t.get("contract") or t.get("symbol") or "").replace(" ", "").upper()
 
-        def _clean_ts(s):
-            return str(s or "").replace(" ", "").replace("-", "").replace(":", "")
-
-        cleared_at = None
-        preserved = []
-        if cleared_at:
-            c_time_clean = _clean_ts(cleared_at)
-            staged_list = [t for t in preserved if _clean_ts(t.get("entry_time", "")) > c_time_clean] + (new_staged or [])
-        else:
-            staged_list = (preserved or []) + (new_staged or [])
+        staged_list = list(new_staged or [])
 
         # Deduplicate staged trades by unique contract key: keep freshest entry_time & highest RR
         contract_map = {}
@@ -3249,4 +3243,11 @@ def scan_anchor_bcd_breakout_generic(df_entry, df_anchor, side="BULL"):
         return res
 
 
-
+# Parabolic Multi-Swing Curve & Cascade Structure Filter
+from parabolic_curve_filter import (
+    is_parabolic_arch_enhanced,
+    extract_swing_pivots,
+    validate_parabolic_cascade_structure,
+    detect_parabolic_multi_swings,
+    is_anchor_after_terminal_base
+)

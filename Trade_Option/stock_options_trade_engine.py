@@ -51,11 +51,14 @@ from trading_core import (
     simulate_trade_outcome as shared_simulate,
     is_anchor_valid_and_active,
     find_newest_valid_anchor,
+    detect_parabolic_multi_swings,
+    is_anchor_after_terminal_base,
     STOCK_REGISTRY,
     SUPER_STOCKS
 )
 
 LIVE_MARKET_DEPLOYMENT = True
+ENABLE_SWINGFILTER = True
 LOOKBACK_DAYS = 30
 INITIAL_CAPITAL = 100000.0
 MAX_RISK_PERCENT = 1.0
@@ -260,8 +263,25 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
         df_anchor = fetch_fyers_candles(opt_sym, TIMEFRAME_ANCHOR, lookback_days=min(LOOKBACK_DAYS, 5))
         if df_entry is None or df_anchor is None or len(df_entry) < 20:
             return None
+
+        # Phase 0: Parabolic Multi-Swing Curve on Anchor Timeframe
+        swing_struct = {}
+        if ENABLE_SWINGFILTER:
+            swing_struct = detect_parabolic_multi_swings(
+                df_anchor.tail(80), side="BULL", min_swings=3, max_bars_since_base=18
+            )
+            if not swing_struct.get("matched", False):
+                return None
+
+        # Phase 1 & 2: Anchor Candle A and B-C-D Breakout
         m = scan_anchor_bcd_breakout(df_entry.tail(150), df_anchor.tail(80))
         if not m:
+            return None
+
+        # Ensure Anchor candle A formed at/after the 4th swing (terminal base)
+        if ENABLE_SWINGFILTER and not is_anchor_after_terminal_base(
+            df_anchor, m.get("CandleATime", m.get("CandleTime")), swing_struct
+        ):
             return None
 
         pat = m.get('Pattern')
@@ -283,11 +303,18 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
         except Exception:
             pos_size = 1
 
+        waves = swing_struct.get("valid_arch_count", 0) if ENABLE_SWINGFILTER else 0
+        has_abs = swing_struct.get("has_terminal_base", False) if ENABLE_SWINGFILTER else False
+        para_badge = f"🌊 {waves}S{'+Abs' if has_abs else ''}" if ENABLE_SWINGFILTER else "N/A"
+
         trade = {
             "symbol": sym,
             "contract": contract_name,
             "fyers_symbol": opt_sym,
             "pattern": pat,
+            "parabolic_score": para_badge,
+            "parabolic_waves": waves,
+            "terminal_base": has_abs,
             "side": opt.get('option_type'),
             "timeframe": TIMEFRAME_ENTRY,
             "strike": opt.get('strike'),
