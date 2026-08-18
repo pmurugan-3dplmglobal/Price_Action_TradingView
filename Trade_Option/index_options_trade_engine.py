@@ -98,22 +98,43 @@ logging.basicConfig(
 )
 
 
+NFO_CACHE_FILE = os.path.join(os.path.dirname(BASE_DIR), "output", "monitor", "nfo_instruments_cache.csv")
+
 def fetch_instruments(kite):
     global instrument_dump
-    try:
-        logging.info("Syncing NFO and BFO instruments...")
-        nfo = kite.instruments("NFO")
+    if kite and hasattr(kite, "instruments"):
         try:
-            bfo = kite.instruments("BFO")
-        except Exception as b_err:
-            logging.warning(f"BFO sync warning: {b_err}")
-            bfo = []
-        combined = (nfo if nfo else []) + (bfo if bfo else [])
-        instrument_dump = pd.DataFrame(combined)
-        logging.info(f"Synced {len(instrument_dump)} NFO/BFO contracts.")
-    except Exception as e:
-        logging.error(f"Instrument sync failed: {e}")
-        raise
+            logging.info("Syncing NFO and BFO instruments...")
+            nfo = kite.instruments("NFO")
+            try:
+                bfo = kite.instruments("BFO")
+            except Exception as b_err:
+                logging.warning(f"BFO sync warning: {b_err}")
+                bfo = []
+            combined = (nfo if nfo else []) + (bfo if bfo else [])
+            instrument_dump = pd.DataFrame(combined)
+            logging.info(f"Synced {len(instrument_dump)} NFO/BFO contracts.")
+            return
+        except Exception as e:
+            logging.warning(f"Instrument sync failed: {e}")
+    
+    # Open-source mode: load cached NFO instruments from disk
+    candidates = [
+        NFO_CACHE_FILE,
+        os.path.join(BASE_DIR, "output", "monitor", "nfo_instruments_cache.csv"),
+        os.path.join(os.path.dirname(BASE_DIR), "Trade_Option", "output", "monitor", "nfo_instruments_cache.csv")
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            try:
+                df = pd.read_csv(c)
+                if not df.empty:
+                    instrument_dump = df
+                    logging.info(f"Loaded {len(instrument_dump)} NFO/BFO contracts from cache.")
+                    return
+            except Exception:
+                pass
+    instrument_dump = pd.DataFrame()
 
 def resolve_option_contract(base_symbol, spot_price, step_size, option_type, expiry_offset=0):
     global instrument_dump

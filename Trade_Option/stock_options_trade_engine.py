@@ -117,10 +117,12 @@ def load_state():
         except Exception:
             ACTIVE_POSITIONS = {}
 
-NFO_CACHE_FILE = os.path.join("output", "monitor", "nfo_instruments_cache.csv")
+NFO_CACHE_FILE = os.path.join(os.path.dirname(BASE_DIR), "output", "monitor", "nfo_instruments_cache.csv")
 
 def sync_instruments(kite):
-    global NFO_INSTRUMENTS
+    if not kite or not hasattr(kite, "instruments"):
+        _load_cached_nfo()
+        return
     def _do_sync():
         global NFO_INSTRUMENTS
         instr = kite.instruments("NSE")
@@ -164,15 +166,23 @@ def sync_instruments(kite):
 
 def _load_cached_nfo():
     global NFO_INSTRUMENTS
-    if os.path.exists(NFO_CACHE_FILE):
-        try:
-            df = pd.read_csv(NFO_CACHE_FILE)
-            if not df.empty:
-                with instruments_lock:
-                    NFO_INSTRUMENTS = df
-                logging.info(f"Loaded {len(NFO_INSTRUMENTS)} NFO contracts from cache")
-        except Exception as e:
-            logging.warning(f"Failed to load cached NFO: {e}")
+    candidates = [
+        NFO_CACHE_FILE,
+        os.path.join(BASE_DIR, "output", "monitor", "nfo_instruments_cache.csv"),
+        os.path.join(os.path.dirname(BASE_DIR), "Trade_Option", "output", "monitor", "nfo_instruments_cache.csv"),
+        os.path.join("output", "monitor", "nfo_instruments_cache.csv")
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            try:
+                df = pd.read_csv(c)
+                if not df.empty:
+                    with instruments_lock:
+                        NFO_INSTRUMENTS = df
+                    logging.info(f"Loaded {len(NFO_INSTRUMENTS)} NFO contracts from cache ({c})")
+                    return
+            except Exception as e:
+                logging.warning(f"Failed to load cached NFO from {c}: {e}")
 
 # ──────────────────────────────────────────────
 #  OPTION CONTRACT RESOLUTION
