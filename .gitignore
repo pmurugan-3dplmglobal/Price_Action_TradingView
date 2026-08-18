@@ -3,7 +3,11 @@ __pycache__/
 logs/
 output/
 input/*.txt
+input/*.json
 input/kite_access_token.txt
+input/fyers_access_token.txt
+input/fyers_config.json
+fyers_login_preview.html
 .DS_Store
 *.log
 scratch/

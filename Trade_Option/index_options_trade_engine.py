@@ -14,6 +14,8 @@ import pandas as pd
 import numpy as np
 
 import trade_db
+from fyers_session import is_fyers_authenticated, get_fyers_session
+from fyers_data import fetch_fyers_candles, fetch_fyers_option_chain
 
 from trading_core import (
     load_kite_session,
@@ -170,6 +172,63 @@ def resolve_option_contract(base_symbol, spot_price, step_size, option_type, exp
 #  SCAN CYCLE — RUNS EVERY N SECONDS
 # ──────────────────────────────────────────────
 
+def _process_fyers_option_strike(opt, sym, cfg):
+    try:
+        opt_sym = opt.get('symbol')
+        df_entry = fetch_fyers_candles(opt_sym, TIMEFRAME_ENTRY, lookback_days=min(LOOKBACK_DAYS, 5))
+        df_anchor = fetch_fyers_candles(opt_sym, TIMEFRAME_ANCHOR, lookback_days=min(LOOKBACK_DAYS, 5))
+        if df_entry is None or df_anchor is None or len(df_entry) < 20:
+            return None
+        m = scan_anchor_bcd_breakout(df_entry.tail(150), df_anchor.tail(80))
+        if not m:
+            return None
+
+        pat = m.get('Pattern')
+        cl = float(m.get('Close', 0))
+        sl = float(m.get('SL', 0)) if m.get('SL') else None
+        t1 = float(m.get('T1', 0)) if m.get('T1') else None
+        t2 = float(m.get('T2', 0)) if m.get('T2') else None
+        t3 = float(m.get('T3', 0)) if m.get('T3') else None
+        rr = m.get('RR', 0)
+        contract_name = opt_sym.replace('NSE:', '').replace('BSE:', '')
+
+        pos_size = 1
+        try:
+            risk_amount = (INITIAL_CAPITAL * (MAX_RISK_PERCENT / 100.0))
+            sl_diff = abs(cl - sl) if sl else 1
+            lot_sz = cfg.get("lot_size", 1)
+            if sl_diff > 0 and lot_sz > 0:
+                pos_size = max(1, int(risk_amount / (sl_diff * lot_sz)))
+        except Exception:
+            pos_size = 1
+
+        trade = {
+            "symbol": sym,
+            "contract": contract_name,
+            "fyers_symbol": opt_sym,
+            "pattern": pat,
+            "side": opt.get('option_type'),
+            "timeframe": TIMEFRAME_ENTRY,
+            "strike": opt.get('strike'),
+            "entry_spot": round(cl, 2),
+            "current_sl": round(sl, 2) if sl else None,
+            "t1": round(t1, 2) if t1 else None,
+            "t2": round(t2, 2) if t2 else None,
+            "t3": round(t3, 2) if t3 else None,
+            "rr": rr,
+            "entry_time": m.get('CandleTime'),
+            "anchor_time": m.get('CandleATime'),
+            "lot_size": cfg.get("lot_size", 1),
+            "position_size": pos_size,
+            "status": "STAGED",
+            "feed_source": "FYERS_OPTION_CHART"
+        }
+        logging.info(f"CYCLE MATCH staged: {contract_name} | {pat} | {opt.get('option_type')} | Strike {opt.get('strike')} | Size: {pos_size} | Entry: {cl:.2f} | SL: {sl:.2f} | T1: {t1} | RR: {rr}")
+        return trade
+    except Exception as e:
+        logging.error(f"Error scanning Fyers strike {opt.get('symbol')}: {e}")
+        return None
+
 def run_scan_cycle(kite):
     cfg_applied = load_program_config_for_engine("index", [("strike_range", "STRIKE_RANGE")])
     for k, v in cfg_applied.items():
@@ -204,17 +263,34 @@ def run_scan_cycle(kite):
         ("A5", find_anchor_two_higher_highs),
     ]
     temp_stored_trades = []
-    for symbol, config in INDEX_REGISTRY.items():
-        with position_lock:
-            if symbol in ACTIVE_POSITIONS:
-                continue
-        trades = scan_symbol(kite, symbol, config, from_entry, to_entry, from_anchor, to_anchor,
-                             entry_scanners, anchor_scanners,
-                             lambda sym, sp, step, opt, r: shared_resolve_strikes(instrument_dump, sym, sp, step, opt, r),
-                             "index", TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR, TIMEFRAME_FALLBACK,
-                             ACTIVE_POSITIONS, position_lock, trade_db, STRIKE_RANGE,
-                             log_to_journal)
-        temp_stored_trades.extend(trades)
+    if is_fyers_authenticated():
+        logging.info("[FYERS_DATA] Scanning Option Premium Charts in parallel via Fyers API...")
+        tasks = []
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            for sym, cfg in INDEX_REGISTRY.items():
+                with position_lock:
+                    if sym in ACTIVE_POSITIONS:
+                        continue
+                chain = fetch_fyers_option_chain(sym, strikecount=max(STRIKE_RANGE, 1))
+                for opt in chain:
+                    tasks.append(pool.submit(_process_fyers_option_strike, opt, sym, cfg))
+
+            for fut in as_completed(tasks):
+                res = fut.result()
+                if res:
+                    temp_stored_trades.append(res)
+    else:
+        for symbol, config in INDEX_REGISTRY.items():
+            with position_lock:
+                if symbol in ACTIVE_POSITIONS:
+                    continue
+            trades = scan_symbol(kite, symbol, config, from_entry, to_entry, from_anchor, to_anchor,
+                                 entry_scanners, anchor_scanners,
+                                 lambda sym, sp, step, opt, r: shared_resolve_strikes(instrument_dump, sym, sp, step, opt, r),
+                                 "index", TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR, TIMEFRAME_FALLBACK,
+                                 ACTIVE_POSITIONS, position_lock, trade_db, STRIKE_RANGE,
+                                 log_to_journal)
+            temp_stored_trades.extend(trades)
     with position_lock:
         shared_write_display(temp_stored_trades, dict(ACTIVE_POSITIONS), SCAN_DISPLAY_FILE, "index")
     return temp_stored_trades

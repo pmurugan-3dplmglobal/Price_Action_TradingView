@@ -1685,3 +1685,29 @@ issues:
       2. Updated index_options_trade_engine.py to use getattr(kite, "PRODUCT_MIS", "MIS") and getattr(kite, "PRODUCT_NRML", "NRML").
       3. Updated common/trading_core.py close_stock_position to safely resolve getattr(kite, "PRODUCT_CNC", "CNC") and getattr(kite, "PRODUCT_MIS", "MIS").
     status: RESOLVED
+
+  - id: FEAT-068
+    title: Fyers Direct Option Chart Scanning & Real-Time Premium Breakout Engine
+    severity: FEATURE
+    category: Market Data & Strategy Execution
+    family: BROKER_INTEGRATION
+    date_reported: "2026-08-18"
+    symptom: |
+      User requested direct scanning of Option CE/PE charts on Port 6060 (Options Dashboard) so that entry, SL, targets, and chart buttons show actual option premium prices instead of underlying spot index points.
+    root_cause: |
+      Feature implementation. Previous system evaluated underlying spot index candles and mapped to strike prices without reading real historical OHLCV premium candles of the option contracts themselves.
+    affected_files:
+      - common/fyers_session.py
+      - common/fyers_data.py
+      - Trade_Option/index_options_trade_engine.py
+      - Trade_Option/stock_options_trade_engine.py
+      - Trade_Option/app_option_Trade.py
+      - Fyers_Access_Token_gen.py
+    resolution: |
+      1. Integrated Fyers API v3 authentication and OAuth token exchange in Fyers_Access_Token_gen.py and common/fyers_session.py.
+      2. Built multi-timeframe candle fetcher and option chain discovery in common/fyers_data.py with rate-limiting, retry logic, and thread-safe in-memory caching.
+      3. Updated Trade_Option/index_options_trade_engine.py and stock_options_trade_engine.py to scan ATM/near-ATM CE and PE option chart candles directly via parallel ThreadPoolExecutor workers.
+      4. Algorithm applies 5 anchor detectors + A-B-C-D breakout detection directly to Option OHLCV charts, outputting true Option Entry (e.g. ₹34.30), Option SL (₹24.79), and Targets (₹57.90).
+      5. Enhanced TradingView chart launcher in Trade_Option/app_option_Trade.py to open contract-specific charts when clicking "CHART 📈".
+    status: RESOLVED
+
