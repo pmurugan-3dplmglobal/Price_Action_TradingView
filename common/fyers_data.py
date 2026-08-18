@@ -58,23 +58,31 @@ def format_fyers_symbol(raw_symbol):
 def format_fyers_equity_symbol(raw_symbol):
     """Normalize a plain equity name to Fyers option-chain format (e.g. NSE:SBIN-EQ).
     Index names (NIFTY, BANKNIFTY, SENSEX etc.) are routed to their INDEX format.
-    Option contract symbols (already containing digits) are returned as-is."""
+    Option contract symbols (containing digits like NIFTY2681824200CE) pass through as-is.
+    Handles special equity names like BAJAJ-AUTO and M&M correctly."""
     s = str(raw_symbol).strip().upper()
     if ":" in s:
-        # Already fully-qualified — ensure equities have -EQ
+        # Already fully-qualified
         parts = s.split(":", 1)
         name = parts[1]
-        # Skip if it's an index, option contract, or already has -EQ
-        if name in INDEX_SYMBOL_MAP or "-" in name or any(ch.isdigit() for ch in name):
+        # Already has suffix (-EQ, -INDEX, -BE, etc.) → pass through
+        if name.endswith("-EQ") or name.endswith("-INDEX") or name.endswith("-BE"):
             return s
+        # Index symbol values (NIFTY50-INDEX etc.) in INDEX_SYMBOL_MAP values
+        if s in INDEX_SYMBOL_MAP.values():
+            return s
+        # Contains digits → option contract (e.g. NSE:NIFTY2681824200CE) → pass through
+        if any(ch.isdigit() for ch in name):
+            return s
+        # Plain equity name without -EQ (e.g. NSE:SBIN, NSE:BAJAJ-AUTO) → add -EQ
         return f"{parts[0]}:{name}-EQ"
     if s in INDEX_SYMBOL_MAP:
         return INDEX_SYMBOL_MAP[s]
-    # Pure alphabetic equity name → NSE:SYMBOL-EQ
-    if s.isalpha():
-        return f"NSE:{s}-EQ"
-    # Contains digits → likely an option contract symbol
-    return f"NSE:{s}"
+    # No colon: check if it has digits → option contract symbol
+    if any(ch.isdigit() for ch in s):
+        return f"NSE:{s}"
+    # No digits → equity name (SBIN, BAJAJ-AUTO, M&M, POWERGRID) → add -EQ
+    return f"NSE:{s}-EQ"
 
 def _rate_limited_fyers_call(call_func, *args, **kwargs):
     """Ensures calls to Fyers history/optionchain obey the 10 req/s rate limit."""
