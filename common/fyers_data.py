@@ -3,7 +3,7 @@ import time
 import logging
 import threading
 import pandas as pd
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt, timedelta, timezone
 
 try:
     from common.fyers_session import get_fyers_session
@@ -43,6 +43,8 @@ TIMEFRAME_MAP = {
 _fyers_lock = threading.Lock()
 _last_call_time = 0.0
 _candle_cache = {}
+
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
 
 def format_fyers_symbol(raw_symbol):
     """Normalize raw symbol to Fyers exchange:symbol format."""
@@ -132,7 +134,7 @@ def fetch_fyers_candles(symbol, timeframe="15minute", lookback_days=30, retries=
                 raw_candles = res["candles"]
                 records = []
                 for c in raw_candles:
-                    ts = dt.fromtimestamp(c[0]).strftime("%Y-%m-%d %H:%M:%S+05:30")
+                    ts = dt.fromtimestamp(c[0], tz=IST_TZ).strftime("%Y-%m-%d %H:%M:%S+05:30")
                     records.append({
                         "date": ts,
                         "open": float(c[1]),
