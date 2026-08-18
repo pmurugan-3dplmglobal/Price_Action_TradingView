@@ -40,7 +40,7 @@ common/                       # shared logic (the "brain")
   __init__.py                 # marks common/ as a Python package
 
 
-Trade_Option/                 # Options Dashboard + engines (port 5050)
+Trade_Option/                 # Options Dashboard + engines (port 6060)
   app_option_Trade.py (1866)  # Flask dashboard; HTML/JS in templates/index.html
   stock_options_trade_engine.py (801)   # Stock Options engine (thin wrapper over trading_core)
   index_options_trade_engine.py (571)   # Index Options engine (thin wrapper over trading_core)
@@ -49,7 +49,7 @@ Trade_Option/                 # Options Dashboard + engines (port 5050)
   run_export_scheduler_daemon.py
   launcher.py
 
-Trade_Stock/                  # Stock Trade Dashboard + scanners (port 5051)
+Trade_Stock/                  # Stock Trade Dashboard + scanners (port 6061)
   app_Sock_Trade.py (1668)    # Flask dashboard; HTML/JS in templates/index.html
   stock_reversal_scanner.py (375)   # merged BULL/BEAR parameterized scanner (PROFILE-driven)
   stock_bullish_reversal_scanner.py (25)  # thin wrapper: configure_bull() + re-export
@@ -73,8 +73,8 @@ output/logs/                  # engine/scanner logs
 
 | Purpose | File | Port / invocation |
 |---|---|---|
-| Options Dashboard | `Trade_Option/app_option_Trade.py` | 5050 |
-| Stock Dashboard | `Trade_Stock/app_Sock_Trade.py` | 5051 |
+| Options Dashboard | `Trade_Option/app_option_Trade.py` | 6060 |
+| Stock Dashboard | `Trade_Stock/app_Sock_Trade.py` | 6061 |
 | Stock Bull scanner | `Trade_Stock/stock_bullish_reversal_scanner.py` | direct: `python ...` |
 | Stock Bear scanner | `Trade_Stock/stock_bearish_reversal_scanner.py` | direct: `python ...` |
 | Auto export | `run_automated_export.bat` | calls exporter/daemon |

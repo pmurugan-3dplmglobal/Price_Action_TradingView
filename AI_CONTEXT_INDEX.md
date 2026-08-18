@@ -18,13 +18,13 @@ when a task explicitly needs them**.
   SENSEX token 265 lot 20 via **BFO** exchange — NIFTY/BANKNIFTY via NFO), Stock Options
   (50 Nifty 50 constituents), Stock Spot Bull & Bear reversals, plus a Stock EMA Engine
   (13 EMA / 44 EMA crossover, `common/ema_engine.py`, default SL=44EMA, T1=1.5RR, T2=2.5RR,
-  T3=3.5RR; on 5050 scans stocks→ATM option contracts, on 5051 scans stock spot symbols).
+  T3=3.5RR; on 6060 scans stocks→ATM option contracts, on 6061 scans stock spot symbols).
 - **Engines / config defaults**:
-  - Index Options Engine (5050, BULL): entry TF `3minute`, anchor TF `15minute`, risk 1.0%.
-  - Stock Options Engine (5050, BULL): entry `15minute`, anchor `30minute`, risk 10.0%.
-  - Stock Bull Scanner (5051): `daily` profile, entry/anchor `day`, lookback 2000 days.
-  - Stock Bear Scanner (5051): `bear_trade` profile, mirror of bull.
-  - Stock EMA Engine (5050+5051): default TF `1d`, fast=13, slow=44, scan_interval 300s,
+  - Index Options Engine (6060, BULL): entry TF `3minute`, anchor TF `15minute`, risk 1.0%.
+  - Stock Options Engine (6060, BULL): entry `15minute`, anchor `30minute`, risk 10.0%.
+  - Stock Bull Scanner (6061): `daily` profile, entry/anchor `day`, lookback 2000 days.
+  - Stock Bear Scanner (6061): `bear_trade` profile, mirror of bull.
+  - Stock EMA Engine (6060+6061): default TF `1d`, fast=13, slow=44, scan_interval 300s,
     target universe selector (ALL / NIFTY50 / NIFTY_NEXT_100 / NIFTY_MIDCAP_100 /
     NIFTY_SMALLCAP_250 / INDEX_OPTIONS). "ALL" aggregates 239 symbols.
 - **Config precedence**: 1) Manual UI edits (sl_target_overrides.json /
@@ -56,16 +56,15 @@ when a task explicitly needs them**.
   engine path alignment, entry_time invariants). Syntax: `ast.parse(...)` for .py,
   `node --check` for inline JS blocks.
 - **Deploy**: Oracle Cloud Always Free (4 ARM cores/24GB RAM/Ubuntu 24.04), dashboards on
-  5050/5051. Token regenerated daily via root `Kite_Access_Token_gen.py`
-  (`input/kite_access_token.txt`).
+  6060/6061.
 
 ## Tier 1 — ALWAYS READ for code changes (core code)
 
 | Path | What it is | When to read |
 |---|---|---|
 | `common/` | The "brain". `trading_core.py` is a re-export hub (do NOT alter core logic — dead-code removal only). Living logic: `timeframe_utils.py`, `registries.py`, `session.py`, `targets.py`, `patterns_bull.py`, `patterns_bear.py`, `position_monitor.py`, `display_writer.py`, `resolve.py`, `ema_engine.py`, `paths.py` (canonical paths), `dashboard_sl_overrides.py`, `trade_db.py`, `daily_trade_journal.py`, `equity_universe.py`, `spot_enricher.py` | Any strategy/engine/position/logic change |
-| `Trade_Option/` | Options Dashboard engine (port 5050). `app_option_Trade.py`, `stock_options_trade_engine.py`, `index_options_trade_engine.py`, UI in `templates/index.html` | Options dashboard / option engines / UI on port 5050 |
-| `Trade_Stock/` | Stock Trade Dashboard + scanners (port 5051). `app_Sock_Trade.py`, `stock_reversal_scanner.py` (single real impl, PROFILE-driven), wrappers `stock_bullish_reversal_scanner.py` / `stock_bearish_reversal_scanner.py`, UI in `templates/index.html` | Stock dashboard / scanners / UI on port 5051 |
+| `Trade_Option/` | Options Dashboard engine (port 6060). `app_option_Trade.py`, `stock_options_trade_engine.py`, `index_options_trade_engine.py`, UI in `templates/index.html` | Options dashboard / option engines / UI on port 6060 |
+| `Trade_Stock/` | Stock Trade Dashboard + scanners (port 6061). `app_Sock_Trade.py`, `stock_reversal_scanner.py` (single real impl, PROFILE-driven), wrappers `stock_bullish_reversal_scanner.py` / `stock_bearish_reversal_scanner.py`, UI in `templates/index.html` | Stock dashboard / scanners / UI on port 6061 |
 | `AGENTS.md` | Technical code map (also loaded automatically as session instructions) | Always own the content; keep in sync when arch/ports change |
 | `ISSUE_MANAGEMENT.yaml` | Bug/feature tracker — RECORD every fix here | After each fix/feature |
 | `MASTER_DOCUMENTATION.yaml` | Master system doc — keep accurate | When behavior changes |

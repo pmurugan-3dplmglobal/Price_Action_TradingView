@@ -15,11 +15,11 @@ meta:
 
 architecture:
   diagram: |
-    Browser (localhost:5050 / localhost:5051)
-      ├── Trade_Option Dashboard (app_option_Trade.py: 5050)
+    Browser (localhost:6060 / localhost:6061)
+      ├── Trade_Option Dashboard (app_option_Trade.py: 6060)
       │     ├── Index Options Engine (index_options_trade_engine.py)
       │     └── Stock Options Engine (stock_options_trade_engine.py)
-      └── Trade_Stock Dashboard (app_Sock_Trade.py: 5051)
+      └── Trade_Stock Dashboard (app_Sock_Trade.py: 6061)
             ├── Stock Bull Reversal (stock_bullish_reversal_scanner.py)
             └── Stock Bear Reversal (stock_bearish_reversal_scanner.py)
                   │
@@ -32,19 +32,19 @@ architecture:
   directory:
     common:
       paths.py: "Single source of truth for canonical system file paths across engines and dashboards (TRADES_DB, ACTIVE_POSITIONS_DB, SCAN_DISPLAY_*, TOKEN_FILE, etc.)"
-      ema_engine.py: "13 EMA & 44 EMA crossover scanner and display output builder for options (5050) and stock spot (5051) modes"
+      ema_engine.py: "13 EMA & 44 EMA crossover scanner and display output builder for options (6060) and stock spot (6061) modes"
       trading_core.py: "Centralized strategy core: scan_anchor_bcd_breakout_generic, 5 Bullish + 5 Bearish anchor detectors, find_profit_targets, find_profit_targets_bearish, resample_timeframe (4h), get_adaptive_lookback, STOCK_REGISTRY (50 stocks), INDEX_REGISTRY (NIFTY, BANKNIFTY, SENSEX), _HISTORICAL_CANDLE_CACHE (TTL RAM caching), is_market_open (09:15-15:30 IST execution guard), session loading, journal writer"
       trade_db.py: "Thread-safe JSON trade database, cycle staging, duplicate active position rejection, expired position purging, and executed pattern deduplication"
       dashboard_sl_overrides.py: "Shared read/write of user-edited SL/T1/T2/T3 overrides (sl_target_overrides.json) used by both dashboards"
     Kite_Access_Token_gen.py: "Zerodha Kite OAuth access token generator CLI (single canonical root-level copy)"
     Trade_Option:
-      app_option_Trade.py: "Options Dashboard (port 5050) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade). Chart modal (/api/get-chart-data) renders direction-aware A-B-C-D markers + benchmark Entry line (A.high/A.low) + benchmark-based SL%/RR."
+      app_option_Trade.py: "Options Dashboard (port 6060) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade). Chart modal (/api/get-chart-data) renders direction-aware A-B-C-D markers + benchmark Entry line (A.high/A.low) + benchmark-based SL%/RR."
       index_options_trade_engine.py: "Intraday index options engine (NIFTY, BANKNIFTY, SENSEX with BFO exchange routing)"
       stock_options_trade_engine.py: "Nifty 50 stock options scanner & executor"
       automated_strategy_exporter.py: "Plan 1 Multi-Timeframe Automated Daily Exporter (Index: 3m/5m/15m, Stock Option: 15m/60m)"
       run_export_scheduler_daemon.py: "Background Scheduler Daemon for 10:30 AM, 1:00 PM, and 3:15 PM exports"
     Trade_Stock:
-      app_Sock_Trade.py: "Stock Trade Dashboard (port 5051) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
+      app_Sock_Trade.py: "Stock Trade Dashboard (port 6061) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
       stock_bullish_reversal_scanner.py: "Stock Bullish Reversal Scanner & Exporter"
       stock_bearish_reversal_scanner.py: "Stock Bearish Reversal Scanner & Exporter"
     backtest:
@@ -274,8 +274,8 @@ registries:
 deployment:
   cloud_provider: "Oracle Cloud Always Free (4 ARM cores, 24GB RAM, Ubuntu 24.04)"
   ports:
-    options_dashboard: 5050
-    stock_dashboard: 5051
+    options_dashboard: 6060
+    stock_dashboard: 6061
 
 pattern_shorthands:
   description: "Explicit pattern codes used in UI Dashboard table & CSV Export to prevent ambiguity between Bullish and Bearish setups"
