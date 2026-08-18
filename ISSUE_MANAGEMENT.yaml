@@ -1754,3 +1754,35 @@ issues:
       index/nifty50 to daily/bear_trade so the tail of both stock scanner logs renders in the UI.
     status: RESOLVED
 
+  - id: BUGFIX-071
+    title: Fyers Option Chain Returns 0 Results for Stock Symbols (Missing -EQ Suffix)
+    severity: HIGH
+    category: Market Data & Symbol Resolution
+    family: BROKER_INTEGRATION
+    date_reported: "2026-08-18"
+    symptom: |
+      On Port 6060 Options Dashboard, [Nifty 50] Scan Results showed underlying spot prices as
+      Entry/SL/Target (e.g. POWERGRID26AUG265CE Entry: ₹265, SL: ₹264.33) instead of actual
+      option premium values (LTP: ₹4.35). The scan was running on spot charts, not option charts.
+    root_cause: |
+      format_fyers_symbol('POWERGRID') produced 'NSE:POWERGRID' but Fyers option chain API requires
+      'NSE:POWERGRID-EQ' (with -EQ suffix) for equity symbols. Without -EQ, the API returned
+      error code -300 "Please provide a valid symbol" and 0 options. With an empty chain, no
+      _process_fyers_stock_option_strike tasks were created, so the engine either produced no
+      Fyers results or fell back to the Kite/spot path (which scans underlying spot candles and
+      maps to option contract names, displaying spot prices as entry/SL/target).
+      Index symbols (NIFTY, BANKNIFTY, SENSEX) were unaffected because they map through
+      INDEX_SYMBOL_MAP to correct formats (e.g. NSE:NIFTY50-INDEX).
+    affected_files:
+      - common/fyers_data.py
+    resolution: |
+      1. Added format_fyers_equity_symbol() in common/fyers_data.py that appends -EQ suffix for
+         pure equity names (POWERGRID → NSE:POWERGRID-EQ), routes index names through
+         INDEX_SYMBOL_MAP (NIFTY → NSE:NIFTY50-INDEX), and passes through option contract symbols
+         containing digits (POWERGRID26AUG265CE → NSE:POWERGRID26AUG265CE).
+      2. Updated fetch_fyers_option_chain to use format_fyers_equity_symbol instead of
+         format_fyers_symbol for option chain lookups.
+      3. Verified: POWERGRID chain now returns 6 options with real premiums (₹4.55 for 265CE);
+         NIFTY/BANKNIFTY/SENSEX chains still work; import smoke tests pass for both engines.
+    status: RESOLVED
+

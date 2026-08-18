@@ -55,6 +55,27 @@ def format_fyers_symbol(raw_symbol):
         return f"BSE:{s}"
     return f"NSE:{s}"
 
+def format_fyers_equity_symbol(raw_symbol):
+    """Normalize a plain equity name to Fyers option-chain format (e.g. NSE:SBIN-EQ).
+    Index names (NIFTY, BANKNIFTY, SENSEX etc.) are routed to their INDEX format.
+    Option contract symbols (already containing digits) are returned as-is."""
+    s = str(raw_symbol).strip().upper()
+    if ":" in s:
+        # Already fully-qualified — ensure equities have -EQ
+        parts = s.split(":", 1)
+        name = parts[1]
+        # Skip if it's an index, option contract, or already has -EQ
+        if name in INDEX_SYMBOL_MAP or "-" in name or any(ch.isdigit() for ch in name):
+            return s
+        return f"{parts[0]}:{name}-EQ"
+    if s in INDEX_SYMBOL_MAP:
+        return INDEX_SYMBOL_MAP[s]
+    # Pure alphabetic equity name → NSE:SYMBOL-EQ
+    if s.isalpha():
+        return f"NSE:{s}-EQ"
+    # Contains digits → likely an option contract symbol
+    return f"NSE:{s}"
+
 def _rate_limited_fyers_call(call_func, *args, **kwargs):
     """Ensures calls to Fyers history/optionchain obey the 10 req/s rate limit."""
     global _last_call_time
@@ -138,7 +159,7 @@ def fetch_fyers_option_chain(underlying_symbol, strikecount=3):
     if not fyers:
         return []
 
-    fyers_symbol = format_fyers_symbol(underlying_symbol)
+    fyers_symbol = format_fyers_equity_symbol(underlying_symbol)
     data = {
         "symbol": fyers_symbol,
         "strikecount": strikecount
