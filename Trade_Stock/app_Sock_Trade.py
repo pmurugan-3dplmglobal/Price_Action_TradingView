@@ -431,9 +431,23 @@ HTML_TEMPLATE = """
     <title>Price Action Strategy — TradingView Edition</title>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
-        // ── TradingView Chart Helper ──
+        // ── TradingView & Fyers Chart Helpers ──
+        function openFyersChart(symbol) {
+            let targetSym = symbol || 'SBIN';
+            const cleanSym = String(targetSym).replace(/\\s+/g, '').replace('^', '').toUpperCase();
+            let fyersSymbol = "NSE:" + cleanSym + "-EQ";
+            if (cleanSym === 'NIFTY') fyersSymbol = "NSE:NIFTY50-INDEX";
+            else if (cleanSym === 'BANKNIFTY') fyersSymbol = "NSE:NIFTYBANK-INDEX";
+            else if (cleanSym === 'SENSEX') fyersSymbol = "BSE:SENSEX-INDEX";
+            else if (cleanSym.includes('SENSEX') || cleanSym.includes('BSE')) fyersSymbol = "BSE:" + cleanSym;
+            else if (cleanSym.includes(':')) fyersSymbol = cleanSym;
+
+            const url = `https://tv.fyers.in/?symbol=${encodeURIComponent(fyersSymbol)}`;
+            window.open(url, '_blank');
+        }
+
         function openTVChart(symbol) {
-            const cleanSym = (symbol || 'SBIN').replace(/\\s+/g, '').replace('^', '').toUpperCase();
+            const cleanSym = (symbol || 'SBIN').replace(/\s+/g, '').replace('^', '').toUpperCase();
             let tvSymbol = "NSE:" + cleanSym;
             if (cleanSym === 'NIFTY') tvSymbol = "NSE:NIFTY";
             else if (cleanSym === 'BANKNIFTY') tvSymbol = "NSE:BANKNIFTY";
@@ -996,8 +1010,8 @@ HTML_TEMPLATE = """
                 const rr = t.rr !== undefined && t.rr !== null ? parseFloat(t.rr).toFixed(2) : '0.00';
 
                 const symName = t.symbol || '';
-                const symLink = `<a href="javascript:void(0)" onclick="openTVChart('${symName}')" style="color:#58a6ff;font-weight:bold;text-decoration:none;" title="Click to view TradingView chart">${symName}</a>`;
-                let actCell = `<td style="text-align:center"><button class="btn-buy" onclick="openTVChart('${symName}')" style="background:#2962ff;color:#ffffff;border:none;padding:4px 12px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px">CHART 📈</button></td>`;
+                const symLink = `<a href="javascript:void(0)" onclick="openFyersChart('${symName}')" style="color:#58a6ff;font-weight:bold;text-decoration:none;" title="Click to view Fyers chart">${symName}</a>`;
+                let actCell = `<td style="text-align:center;white-space:nowrap;"><button class="btn-buy" onclick="openFyersChart('${symName}')" style="background:#00c288;color:#ffffff;border:none;padding:4px 9px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;margin-right:4px;" title="Open Fyers Live Web Chart">FYERS 📊</button><button class="btn-buy" onclick="openTVChart('${symName}')" style="background:#2962ff;color:#ffffff;border:none;padding:4px 9px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;" title="View in Embedded TradingView Panel">TV 📈</button></td>`;
 
                 return `<tr><td>${symLink}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
             }
