@@ -252,7 +252,11 @@ def fetch_fyers_option_chain(underlying_symbol, strikecount=3, retries=4):
                 time.sleep(0.5 * (attempt + 1))
                 continue
             else:
-                logging.warning(f"Fyers option chain failed for {fyers_symbol}: {res}")
+                code = res.get("code") if isinstance(res, dict) else None
+                if code in (-300, -470):
+                    logging.debug(f"Fyers option chain not available for {fyers_symbol}: {res.get('message', '')}")
+                else:
+                    logging.warning(f"Fyers option chain failed for {fyers_symbol}: {res}")
                 return []
         except Exception as e:
             logging.debug(f"Fyers option chain attempt {attempt+1} error for {fyers_symbol}: {e}")
