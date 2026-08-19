@@ -8,6 +8,31 @@ meta:
   purpose: Document operational failures, root causes, regression fixes, and system enhancements.
 
 issues:
+  - id: BUGFIX-075
+    title: Fyers Option Chain 429 Rate Limit Burst Exhaustion Fix
+    severity: HIGH
+    category: Broker Integration / Rate Limiting
+    family: BROKER_INTEGRATION
+    date_reported: "2026-08-19"
+    symptom: |
+      During Options Trade Engine execution across ~50-210 stocks, Fyers API returned HTTP 429 ("request limit reached" / "Bad request") and aborted option chain discovery for symbols like SHRIRAMFIN, TATACONSUM, TATAMOTORS, TATASTEEL, TCS, TECHM, TITAN, TRENT, etc.
+    root_cause: |
+      1. fetch_fyers_option_chain in common/fyers_data.py lacked a retry loop and returned [] immediately upon receiving a single 429.
+      2. _rate_limited_fyers_call paced requests at 0.12s (8.3 req/s), which exceeded Fyers optionchain burst limits when 4 concurrent worker threads concurrently queried option chains and historical candles.
+      3. Option chains lacked in-memory short TTL caching, causing redundant API queries.
+    affected_files:
+      - common/fyers_data.py
+      - Trade_Option/stock_options_trade_engine.py
+      - Trade_Option/index_options_trade_engine.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Upgraded _rate_limited_fyers_call with dynamic _rate_limit_cooldown_until (1.2s global pause on 429) and increased base inter-call spacing to 0.20s (max 5 req/s).
+      2. Added 30-second TTL in-memory caching (_option_chain_cache) in fetch_fyers_option_chain.
+      3. Added 4-attempt exponential backoff retry loop in fetch_fyers_option_chain (0.5s, 1.0s, 1.5s).
+      4. Added 0.08s inter-symbol pacing in stock_options_trade_engine.py and index_options_trade_engine.py.
+    status: RESOLVED
+
+
   - id: ISSUE-054
     title: Scan Clear Persistence Fix (Cycle DB, In-Memory Caches & UI Polling Decoupling)
     severity: MEDIUM

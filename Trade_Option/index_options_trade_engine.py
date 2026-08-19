@@ -310,6 +310,7 @@ def run_scan_cycle(kite):
                 chain = fetch_fyers_option_chain(sym, strikecount=max(STRIKE_RANGE, 1))
                 for opt in chain:
                     tasks.append(pool.submit(_process_fyers_option_strike, opt, sym, cfg))
+                time.sleep(0.08)
 
             for fut in as_completed(tasks):
                 res = fut.result()

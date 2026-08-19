@@ -42,7 +42,9 @@ TIMEFRAME_MAP = {
 
 _fyers_lock = threading.Lock()
 _last_call_time = 0.0
+_rate_limit_cooldown_until = 0.0
 _candle_cache = {}
+_option_chain_cache = {}
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
 
@@ -87,16 +89,37 @@ def format_fyers_equity_symbol(raw_symbol):
     return f"NSE:{s}-EQ"
 
 def _rate_limited_fyers_call(call_func, *args, **kwargs):
-    """Ensures calls to Fyers history/optionchain obey the 10 req/s rate limit."""
-    global _last_call_time
+    """Ensures calls to Fyers history/optionchain obey safe 5 req/s rate limits with dynamic 429 cooldown."""
+    global _last_call_time, _rate_limit_cooldown_until
     with _fyers_lock:
-        elapsed = time.time() - _last_call_time
-        if elapsed < 0.12:
-            time.sleep(0.12 - elapsed)
-        _last_call_time = time.time()
-        return call_func(*args, **kwargs)
+        now = time.time()
+        # If currently in a rate limit cooldown, wait it out
+        if now < _rate_limit_cooldown_until:
+            wait_time = _rate_limit_cooldown_until - now
+            time.sleep(wait_time)
 
-def fetch_fyers_candles(symbol, timeframe="15minute", lookback_days=30, retries=3):
+        now = time.time()
+        elapsed = now - _last_call_time
+        if elapsed < 0.20:
+            time.sleep(0.20 - elapsed)
+        _last_call_time = time.time()
+        
+        try:
+            res = call_func(*args, **kwargs)
+            # If rate limit 429 response received, trigger global cooldown
+            if isinstance(res, dict):
+                code = res.get("code")
+                msg = str(res.get("message", "")).lower()
+                if code == 429 or "limit" in msg or "too many" in msg:
+                    _rate_limit_cooldown_until = time.time() + 1.2
+            return res
+        except Exception as e:
+            err_str = str(e).lower()
+            if "429" in err_str or "limit" in err_str:
+                _rate_limit_cooldown_until = time.time() + 1.2
+            raise
+
+def fetch_fyers_candles(symbol, timeframe="15minute", lookback_days=30, retries=4):
     """
     Fetches historical OHLCV candles from Fyers API with rate-limit protection,
     in-memory short cache, and returns standard DataFrame.
@@ -111,7 +134,7 @@ def fetch_fyers_candles(symbol, timeframe="15minute", lookback_days=30, retries=
 
     cache_key = f"{fyers_symbol}:{resolution}:{lookback_days}"
     cached = _candle_cache.get(cache_key)
-    if cached and (time.time() - cached["ts"]) < 10:
+    if cached and (time.time() - cached["ts"]) < 15:
         return cached["df"].copy()
 
     now = dt.now()
@@ -150,19 +173,20 @@ def fetch_fyers_candles(symbol, timeframe="15minute", lookback_days=30, retries=
                 df.reset_index(drop=True, inplace=True)
                 _candle_cache[cache_key] = {"ts": time.time(), "df": df}
                 return df
-            elif isinstance(res, dict) and "limit" in str(res.get("message", "")).lower():
-                time.sleep(0.3 * (attempt + 1))
+            elif isinstance(res, dict) and (res.get("code") == 429 or "limit" in str(res.get("message", "")).lower()):
+                time.sleep(0.4 * (attempt + 1))
                 continue
             else:
                 return None
         except Exception as e:
-            logging.error(f"Fyers candle fetch attempt {attempt+1} failed for {fyers_symbol}: {e}")
-            time.sleep(0.2)
+            logging.debug(f"Fyers candle fetch attempt {attempt+1} failed for {fyers_symbol}: {e}")
+            time.sleep(0.3 * (attempt + 1))
     return None
 
-def fetch_fyers_option_chain(underlying_symbol, strikecount=3):
+def fetch_fyers_option_chain(underlying_symbol, strikecount=3, retries=4):
     """
     Fetches real-time option chain for an index or equity from Fyers.
+    Features 30-second TTL in-memory caching and automatic 429 backoff retry loop.
     Returns list of option contract dicts.
     """
     fyers = get_fyers_session()
@@ -170,32 +194,44 @@ def fetch_fyers_option_chain(underlying_symbol, strikecount=3):
         return []
 
     fyers_symbol = format_fyers_equity_symbol(underlying_symbol)
+    cache_key = f"{fyers_symbol}:{strikecount}"
+    cached = _option_chain_cache.get(cache_key)
+    if cached and (time.time() - cached["ts"]) < 30:
+        return cached["data"]
+
     data = {
         "symbol": fyers_symbol,
         "strikecount": strikecount
     }
 
-    try:
-        res = _rate_limited_fyers_call(fyers.optionchain, data=data)
-        if isinstance(res, dict) and res.get("s") == "ok":
-            chain = res.get("data", {}).get("optionsChain", [])
-            valid_options = []
-            for item in chain:
-                opt_type = item.get("option_type", "").upper()
-                if opt_type in ("CE", "PE"):
-                    valid_options.append({
-                        "symbol": item.get("symbol"),
-                        "strike": float(item.get("strike_price", 0)),
-                        "option_type": opt_type,
-                        "ltp": float(item.get("ltp", 0)),
-                        "volume": item.get("volume", 0),
-                        "oi": item.get("oi", 0),
-                        "delta": item.get("delta", 0.5)
-                    })
-            return valid_options
-        else:
-            logging.warning(f"Fyers option chain failed for {fyers_symbol}: {res}")
-            return []
-    except Exception as e:
-        logging.error(f"Fyers option chain error for {fyers_symbol}: {e}")
-        return []
+    for attempt in range(retries):
+        try:
+            res = _rate_limited_fyers_call(fyers.optionchain, data=data)
+            if isinstance(res, dict) and res.get("s") == "ok":
+                chain = res.get("data", {}).get("optionsChain", [])
+                valid_options = []
+                for item in chain:
+                    opt_type = item.get("option_type", "").upper()
+                    if opt_type in ("CE", "PE"):
+                        valid_options.append({
+                            "symbol": item.get("symbol"),
+                            "strike": float(item.get("strike_price", 0)),
+                            "option_type": opt_type,
+                            "ltp": float(item.get("ltp", 0)),
+                            "volume": item.get("volume", 0),
+                            "oi": item.get("oi", 0),
+                            "delta": item.get("delta", 0.5)
+                        })
+                _option_chain_cache[cache_key] = {"ts": time.time(), "data": valid_options}
+                return valid_options
+            elif isinstance(res, dict) and (res.get("code") == 429 or "limit" in str(res.get("message", "")).lower() or "too many" in str(res.get("message", "")).lower()):
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            else:
+                logging.warning(f"Fyers option chain failed for {fyers_symbol}: {res}")
+                return []
+        except Exception as e:
+            logging.debug(f"Fyers option chain attempt {attempt+1} error for {fyers_symbol}: {e}")
+            time.sleep(0.4 * (attempt + 1))
+
+    return []
