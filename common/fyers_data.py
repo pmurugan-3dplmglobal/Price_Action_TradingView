@@ -66,19 +66,36 @@ def format_fyers_symbol(raw_symbol):
         return f"BSE:{s}"
     return f"NSE:{s}"
 
+EQUITY_ALIAS_MAP = {
+    "TATAMOTORS": "TMPV",
+    "NSE:TATAMOTORS": "NSE:TMPV",
+    "NSE:TATAMOTORS-EQ": "NSE:TMPV-EQ",
+    "TATAMOTOR": "TMPV",
+    "M_M": "M&M",
+    "BAJAJ_AUTO": "BAJAJ-AUTO",
+    "MCDOWELL_N": "UNITDSPR",
+}
+
 def format_fyers_equity_symbol(raw_symbol):
     """Normalize a plain equity name to Fyers option-chain format (e.g. NSE:SBIN-EQ).
     Index names (NIFTY, BANKNIFTY, SENSEX etc.) are routed to their INDEX format.
     Option contract symbols (containing digits like NIFTY2681824200CE) pass through as-is.
-    Handles special equity names like BAJAJ-AUTO and M&M correctly."""
+    Handles special equity names like BAJAJ-AUTO, M&M, and TATAMOTORS -> TMPV correctly."""
     s = str(raw_symbol).strip().upper()
+    if s in EQUITY_ALIAS_MAP:
+        s = EQUITY_ALIAS_MAP[s]
     if ":" in s:
         # Already fully-qualified
         parts = s.split(":", 1)
         name = parts[1]
+        if name in EQUITY_ALIAS_MAP:
+            name = EQUITY_ALIAS_MAP[name]
         # Already has suffix (-EQ, -INDEX, -BE, etc.) → pass through
         if name.endswith("-EQ") or name.endswith("-INDEX") or name.endswith("-BE"):
-            return s
+            base = name.rsplit("-", 1)[0]
+            if base in EQUITY_ALIAS_MAP:
+                return f"{parts[0]}:{EQUITY_ALIAS_MAP[base]}-EQ"
+            return f"{parts[0]}:{name}"
         # Index symbol values (NIFTY50-INDEX etc.) in INDEX_SYMBOL_MAP values
         if s in INDEX_SYMBOL_MAP.values():
             return s
