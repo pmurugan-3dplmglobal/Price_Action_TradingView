@@ -195,16 +195,28 @@ def _load_cached_nfo():
 
 def resolve_option_contract(symbol, spot, step, opt_type, target_strike=None):
     with instruments_lock:
+        sym_clean = symbol.strip().upper()
+        candidates = [sym_clean]
+        if sym_clean in ("TATAMOTORS", "TATAMOTOR"):
+            candidates.append("TMPV")
+        elif sym_clean == "TMPV":
+            candidates.append("TATAMOTORS")
+        elif sym_clean in ("M_M", "M&M"):
+            candidates.extend(["M&M", "M_M"])
+        elif sym_clean in ("BAJAJ_AUTO", "BAJAJ-AUTO"):
+            candidates.extend(["BAJAJ-AUTO", "BAJAJ_AUTO"])
+
         if NFO_INSTRUMENTS.empty:
             s = target_strike or int(round(spot / step) * step)
-            return f"{symbol}{dt.now().strftime('%y%b').upper()}{s}{opt_type}"
+            return f"{candidates[-1]}{dt.now().strftime('%y%b').upper()}{s}{opt_type}"
         try:
             m = NFO_INSTRUMENTS[
-                (NFO_INSTRUMENTS['name'] == symbol.strip().upper()) &
+                (NFO_INSTRUMENTS['name'].isin(candidates)) &
                 (NFO_INSTRUMENTS['instrument_type'] == opt_type.upper())
             ].copy()
             if m.empty:
-                return None
+                s = target_strike or int(round(spot / step) * step)
+                return f"{candidates[-1]}{dt.now().strftime('%y%b').upper()}{s}{opt_type}"
             m['strike'] = m['strike'].astype(float)
             target = target_strike or round(spot / step) * step
             sub = m[m['strike'] == float(target)].copy()

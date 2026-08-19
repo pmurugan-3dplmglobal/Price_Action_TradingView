@@ -2636,6 +2636,17 @@ def resolve_option_strikes(nfo_instruments, base_symbol, spot_price, step_size, 
     if nfo_instruments is None or nfo_instruments.empty or 'name' not in nfo_instruments.columns:
         return []
     atm = int(round(spot_price / step_size) * step_size)
+    sym_clean = base_symbol.strip().upper()
+    candidates = [sym_clean]
+    if sym_clean in ("TATAMOTORS", "TATAMOTOR"):
+        candidates.append("TMPV")
+    elif sym_clean == "TMPV":
+        candidates.append("TATAMOTORS")
+    elif sym_clean in ("M_M", "M&M"):
+        candidates.extend(["M&M", "M_M"])
+    elif sym_clean in ("BAJAJ_AUTO", "BAJAJ-AUTO"):
+        candidates.extend(["BAJAJ-AUTO", "BAJAJ_AUTO"])
+
     out = []
     seen = set()
     for offset in range(-n_range, n_range + 1):
@@ -2645,7 +2656,7 @@ def resolve_option_strikes(nfo_instruments, base_symbol, spot_price, step_size, 
         seen.add(strike)
         try:
             df = nfo_instruments[
-                (nfo_instruments['name'] == base_symbol.strip().upper()) &
+                (nfo_instruments['name'].isin(candidates)) &
                 (nfo_instruments['instrument_type'] == option_type.upper()) &
                 (nfo_instruments['strike'] == float(strike))
             ].copy()
