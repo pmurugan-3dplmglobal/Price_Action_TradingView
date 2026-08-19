@@ -29,5 +29,16 @@
     "strike_range": 1,
     "enable_swingfilter": true,
     "min_cascading_waves": 3
+  },
+  "index_spot": {
+    "timeframe_entry": "15minute",
+    "timeframe_anchor": "15minute",
+    "lookback_days": 30,
+    "scan_interval": 15,
+    "risk_percent": 2,
+    "capital": 100000,
+    "strike_range": 0,
+    "enable_swingfilter": true,
+    "min_cascading_waves": 3
   }
 }

@@ -38,12 +38,15 @@ CONFIG_FILE = os.path.join(BASE_DIR, "input", "program_config.json")
 STATE_FILE = os.path.join(BASE_DIR, "output", "monitor", "stock_positions_state.json")
 JOURNAL_FILE = os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv")
 INDEX_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_index_trade_engine.log")
+INDEX_SPOT_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_index_spot_engine.log")
 NIFTY50_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_nifty50_scanner.log")
 DAILY_LOG_FILE = os.path.join(BASE_DIR, "output", "logs", "bull_daily_scanner.log")
 SCAN_DISPLAY_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_display_data.json")
 SCAN_DISPLAY_INDEX_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_display_index.json")
+SCAN_DISPLAY_INDEX_SPOT_FILE = os.path.join(BASE_DIR, "output", "monitor", "scan_display_index_spot.json")
 LIVE_EXECUTION_FLAG = os.path.join(BASE_DIR, "input", "nifty50_live.flag")
 LIVE_EXECUTION_FLAG_INDEX = os.path.join(BASE_DIR, "input", "index_live.flag")
+LIVE_EXECUTION_FLAG_INDEX_SPOT = os.path.join(BASE_DIR, "input", "index_spot_live.flag")
 
 DASHBOARD_PORT = int(os.environ.get("PORT", 6060))
 REFRESH_SECONDS = 3
@@ -58,6 +61,26 @@ PROGRAMS = {
         "log_file": INDEX_LOG_FILE,
         "config_fields": {
             "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "3minute"},
+            "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "15minute"},
+            "capital": {"label": "Capital", "type": "number", "default": 100000.0},
+            "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0},
+            "enable_swingfilter": {
+                "label": "Parabolic Multi-Swing Filter",
+                "type": "select",
+                "options": ["true", "false"],
+                "default": "true"
+            },
+            "min_cascading_waves": {"label": "Min Cascading Waves", "type": "number", "default": 3}
+        }
+    },
+    "index_spot": {
+        "name": "Index Spot Directional Engine",
+        "file": "index_spot_trade_engine.py",
+        "desc": "Scans Index Spot charts (NIFTY, BANKNIFTY, IT, SENSEX, FINNIFTY, MIDCPNIFTY) for directional setups & auto-resolves ATM CE/PE",
+        "color": "#a371f7",
+        "log_file": INDEX_SPOT_LOG_FILE,
+        "config_fields": {
+            "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "15minute"},
             "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "15minute"},
             "capital": {"label": "Capital", "type": "number", "default": 100000.0},
             "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0},
@@ -376,9 +399,16 @@ def refresh_data():
                         scan_display["index"] = json.load(f)
             except Exception:
                 pass
+            try:
+                if os.path.exists(SCAN_DISPLAY_INDEX_SPOT_FILE):
+                    with open(SCAN_DISPLAY_INDEX_SPOT_FILE, "r") as f:
+                        scan_display["index_spot"] = json.load(f)
+            except Exception:
+                pass
             cached_data["scan_display"] = scan_display
             cached_data["live_execution"] = os.path.exists(LIVE_EXECUTION_FLAG)
             cached_data["live_execution_index"] = os.path.exists(LIVE_EXECUTION_FLAG_INDEX)
+            cached_data["live_execution_index_spot"] = os.path.exists(LIVE_EXECUTION_FLAG_INDEX_SPOT)
             try:
                 active = trade_db.get_active_trades()
                 active_list = []
@@ -946,20 +976,21 @@ HTML_TEMPLATE = """
 
             const filter = (document.getElementById('scan-engine-filter') || {}).value || 'all';
             let scanHtml = '';
-            const colHeaders = '<th onclick="sortTable(this,0)">Symbol</th><th onclick="sortTable(this,1)">Contract</th><th onclick="sortTable(this,2)">Side</th><th onclick="sortTable(this,3)">Entry</th><th onclick="sortTable(this,4)">SL</th><th onclick="sortTable(this,5)">T1</th><th onclick="sortTable(this,6)">T2</th><th onclick="sortTable(this,7)">T3</th><th onclick="sortTable(this,8)">AncherT</th><th onclick="sortTable(this,9)">EntryTime</th><th onclick="sortTable(this,10)">Result</th><th onclick="sortTable(this,11)">Parabolic</th><th onclick="sortTable(this,12)">CF</th><th onclick="sortTable(this,13)">RR</th><th style="text-align:center">Action</th>';
+            const colHeaders = '<th onclick="sortTable(this,0)">Symbol</th><th onclick="sortTable(this,1)">Contract</th><th onclick="sortTable(this,2)">Side</th><th onclick="sortTable(this,3)">Strike</th><th onclick="sortTable(this,4)">Entry</th><th onclick="sortTable(this,5)">SL</th><th onclick="sortTable(this,6)">T1</th><th onclick="sortTable(this,7)">T2</th><th onclick="sortTable(this,8)">T3</th><th onclick="sortTable(this,9)">AncherT</th><th onclick="sortTable(this,10)">EntryTime</th><th onclick="sortTable(this,11)">Result</th><th onclick="sortTable(this,12)">Parabolic</th><th onclick="sortTable(this,13)">CF</th><th onclick="sortTable(this,14)">RR</th><th style="text-align:center">Action</th>';
             function tradeRow(t, resultBadge, eng) {
-                let entry = t.strike !== undefined && t.strike !== null && t.strike !== '' ? t.strike : '-';
-                if (entry === '-') {
+                let strikeVal = t.strike !== undefined && t.strike !== null && t.strike !== '' ? t.strike : '-';
+                if (strikeVal === '-') {
                     const m = String(t.contract || '').match(/(\\d+)(CE|PE)$/);
                     if (m) {
                         const sym = String(t.symbol || '').toUpperCase();
-                        entry = (sym === 'NIFTY' || sym === 'BANKNIFTY' || sym === 'SENSEX') ? m[1].slice(-5) : m[1];
+                        strikeVal = (sym === 'NIFTY' || sym === 'BANKNIFTY' || sym === 'SENSEX') ? m[1].slice(-5) : m[1];
                     }
                 }
+                const entry = t.entry_spot !== undefined && t.entry_spot !== null && t.entry_spot !== '' ? parseFloat(t.entry_spot).toFixed(2) : '-';
                 const sl = t.current_sl !== undefined && t.current_sl !== null ? parseFloat(t.current_sl).toFixed(2) : '-';
-                const t1v = t.t1 !== undefined && t.t1 !== null ? t.t1 : '-';
-                const t2v = t.t2 !== undefined && t.t2 !== null ? t.t2 : '-';
-                const t3v = t.t3 !== undefined && t.t3 !== null ? t.t3 : '-';
+                const t1v = t.t1 !== undefined && t.t1 !== null ? parseFloat(t.t1).toFixed(2) : '-';
+                const t2v = t.t2 !== undefined && t.t2 !== null ? parseFloat(t.t2).toFixed(2) : '-';
+                const t3v = t.t3 !== undefined && t.t3 !== null ? parseFloat(t.t3).toFixed(2) : '-';
                 const et = t.entry_time || '';
                 let etFormatted = '-';
                 if (et) {
@@ -1000,9 +1031,9 @@ HTML_TEMPLATE = """
                 const symLink = `<a href="javascript:void(0)" onclick="openFyersChart('${symName}', '${t.contract||''}')" style="color:#58a6ff;font-weight:bold;text-decoration:none;" title="Click to view Fyers chart">${symName}</a>`;
                 let actCell = `<td style="text-align:center;white-space:nowrap;"><button class="btn-buy" onclick="openFyersChart('${symName}', '${t.contract||''}')" style="background:#00c288;color:#ffffff;border:none;padding:4px 9px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;margin-right:4px;" title="Open Fyers Live Web Chart">FYERS 📊</button><button class="btn-buy" onclick="openTVChart('${symName}', '${t.contract||''}')" style="background:#2962ff;color:#ffffff;border:none;padding:4px 9px;border-radius:4px;font-weight:bold;cursor:pointer;font-size:11px;" title="View in Embedded TradingView Panel">TV 📈</button></td>`;
 
-                return `<tr><td>${symLink}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${paraBadge}</td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
+                return `<tr><td>${symLink}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${strikeVal}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${paraBadge}</td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
             }
-            const engines = filter === 'all' ? ['nifty50', 'index'] : [filter];
+            const engines = filter === 'all' ? ['nifty50', 'index', 'index_spot'] : [filter];
             engines.forEach(eng => {
                 const data = sd[eng];
                 if (!data) return;
@@ -1018,7 +1049,7 @@ HTML_TEMPLATE = """
                     }
                 });
                 const staged = Object.values(bestBySymbol);
-                const engLabel = eng === 'nifty50' ? 'Nifty 50' : 'Index';
+                const engLabel = eng === 'nifty50' ? 'Stock Options' : (eng === 'index_spot' ? 'Index Spot Directional' : 'Index Options');
                 if (staged.length) {
                     scanHtml += '<div class="scan-section-title">[' + engLabel + '] Scan Results (' + staged.length + ')</div>';
                     scanHtml += '<div style="overflow-x:auto"><table><thead><tr>' + colHeaders + '</tr></thead><tbody>';
@@ -2023,6 +2054,7 @@ HTML_TEMPLATE = """
                             <select id="scan-engine-filter" onchange="renderScanTab()" class="filter-select" style="width:auto">
                                 <option value="all" selected>All Options</option>
                                 <option value="index">Index Options</option>
+                                <option value="index_spot">Index Spot Directional</option>
                                 <option value="nifty50">Stock Options</option>
                             </select>
                             <button class="btn-scan-clear" onclick="clearScanData()" style="padding:2px 10px;background:inherit;border:1px solid #f85149;color:#f85149;border-radius:4px;font-size:10px;cursor:pointer">Clear</button>
@@ -2471,12 +2503,18 @@ def api_scan_clear():
                   "timestamp": now_str,
                   "cleared_at": now_str,
                   "staged_trades": [], "carry_forward": [], "active_live": []}
-    for f in [SCAN_DISPLAY_FILE, SCAN_DISPLAY_INDEX_FILE]:
+    for f in [SCAN_DISPLAY_FILE, SCAN_DISPLAY_INDEX_FILE, SCAN_DISPLAY_INDEX_SPOT_FILE]:
         try:
             with open(f, "w") as fh:
                 json.dump(empty_scan, fh)
         except Exception:
             pass
+    try:
+        trade_db.clear_cycle_trades("nifty50")
+        trade_db.clear_cycle_trades("index")
+        trade_db.clear_cycle_trades("index_spot")
+    except Exception:
+        pass
     return jsonify({"ok": True})
 
 def _format_pattern_result(p):
@@ -2535,7 +2573,7 @@ def api_scan_export():
         writer.writerow(["Symbol", "Contract", "Side", "Entry", "SL", "T1", "T2", "T3",
                          "AncherT", "EntryTime", "Result", "CF", "RR", "Engine", "Status",
                          "Spot_Trend", "Spot_T1_Target"])
-        files = [("Nifty 50", SCAN_DISPLAY_FILE), ("Index", SCAN_DISPLAY_INDEX_FILE)]
+        files = [("Nifty 50", SCAN_DISPLAY_FILE), ("Index", SCAN_DISPLAY_INDEX_FILE), ("Index Spot", SCAN_DISPLAY_INDEX_SPOT_FILE)]
         spot_eval_cache = {}
         for label, path in files:
             full = path if os.path.isabs(path) else os.path.join(BASE_DIR, path)

@@ -73,9 +73,12 @@ def get_next_candle_start_time(candle_date, timeframe_str):
         return str(candle_date)
 
 INDEX_REGISTRY = {
-    "NIFTY": {"token": 256265, "lot_size": 65, "strike_step": 50, "tradingsymbol": "NIFTY 50", "exchange": "NFO"},
-    "BANKNIFTY": {"token": 260105, "lot_size": 30, "strike_step": 100, "tradingsymbol": "NIFTY BANK", "exchange": "NFO"},
-    "SENSEX": {"token": 265, "lot_size": 10, "strike_step": 100, "tradingsymbol": "BSE SENSEX", "exchange": "BFO"}
+    "NIFTY": {"token": 256265, "lot_size": 65, "strike_step": 50, "tradingsymbol": "NIFTY 50", "exchange": "NFO", "fyers_symbol": "NSE:NIFTY50-INDEX"},
+    "BANKNIFTY": {"token": 260105, "lot_size": 30, "strike_step": 100, "tradingsymbol": "NIFTY BANK", "exchange": "NFO", "fyers_symbol": "NSE:NIFTYBANK-INDEX"},
+    "SENSEX": {"token": 265, "lot_size": 10, "strike_step": 100, "tradingsymbol": "BSE SENSEX", "exchange": "BFO", "fyers_symbol": "BSE:SENSEX-INDEX"},
+    "FINNIFTY": {"token": 257801, "lot_size": 65, "strike_step": 50, "tradingsymbol": "NIFTY FIN SERVICE", "exchange": "NFO", "fyers_symbol": "NSE:FINNIFTY-INDEX"},
+    "MIDCPNIFTY": {"token": 288009, "lot_size": 120, "strike_step": 25, "tradingsymbol": "NIFTY MID SELECT", "exchange": "NFO", "fyers_symbol": "NSE:MIDCPNIFTY-INDEX"},
+    "NIFTYIT": {"token": 259849, "lot_size": 25, "strike_step": 100, "tradingsymbol": "NIFTY IT", "exchange": "NSE", "fyers_symbol": "NSE:NIFTYIT-INDEX"}
 }
 
 def get_adaptive_lookback(timeframe_str, asset_class="STOCK_SPOT", user_lookback=None):
