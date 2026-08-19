@@ -354,6 +354,7 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
             "rr": rr,
             "entry_time": m.get('CandleTime'),
             "anchor_time": m.get('CandleATime'),
+            "candle_a_time": m.get('CandleATime'),
             "lot_size": cfg.get("lot_size", 1),
             "position_size": pos_size,
             "status": "STAGED",
