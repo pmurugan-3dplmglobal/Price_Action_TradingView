@@ -151,8 +151,19 @@ def _write_json(path, data):
 def stage_cycle_trade(engine, trade):
     """Persist a found trade into per-engine temp storage for the current cycle."""
     db = _read_json(CYCLE_STORE_FILE, {})
+    if not isinstance(db, dict):
+        db = {}
     db.setdefault(engine, [])
     db[engine].append(trade)
+    _write_json(CYCLE_STORE_FILE, db)
+
+
+def store_cycle_trades(engine, trades):
+    """Store or replace full list of staged trades for an engine for the current cycle."""
+    db = _read_json(CYCLE_STORE_FILE, {})
+    if not isinstance(db, dict):
+        db = {}
+    db[engine] = list(trades) if trades else []
     _write_json(CYCLE_STORE_FILE, db)
 
 
