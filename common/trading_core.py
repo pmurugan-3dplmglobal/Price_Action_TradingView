@@ -40,7 +40,9 @@ LOOKBACK_LIMITS = {
     "180min": 400,
     "4hr": 400,
     "4h": 400,
+    "4hour": 400,
     "240min": 400,
+    "240minute": 400,
     "day": 2000,
     "d": 2000,
     "1d": 2000,
@@ -1868,7 +1870,7 @@ def derive_sl_targets_for_symbol(kite, symbol, entry_price, registry, timeframe_
         if not config:
             return None
         ref_now = dt.now()
-        limits = {"minute": 60, "3minute": 100, "5minute": 100, "10minute": 100, "15minute": 200, "30minute": 200, "60minute": 400, "75minute": 400, "75min": 400, "day": 2000}
+        limits = {"minute": 60, "3minute": 100, "5minute": 100, "10minute": 100, "15minute": 200, "30minute": 200, "60minute": 400, "75minute": 400, "75min": 400, "4hr": 400, "4hour": 400, "240min": 400, "day": 2000}
         max_days = limits.get(timeframe_entry, 200)
         from_d = (ref_now - timedelta(days=min(lookback_days, max_days))).strftime("%Y-%m-%d")
         to_d = ref_now.strftime("%Y-%m-%d")

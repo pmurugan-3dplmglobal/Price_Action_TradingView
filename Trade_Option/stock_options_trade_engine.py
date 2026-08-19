@@ -373,7 +373,7 @@ def run_scan_cycle(kite):
         ref_now = dt.now()
     else:
         ref_now = target_date
-    limits = {"minute": 60, "3minute": 100, "5minute": 100, "10minute": 100, "15minute": 200, "30minute": 200, "60minute": 400, "75minute": 400, "75min": 400, "day": 2000}
+    limits = {"minute": 60, "3minute": 100, "5minute": 100, "10minute": 100, "15minute": 200, "30minute": 200, "60minute": 400, "75minute": 400, "75min": 400, "4hr": 400, "4hour": 400, "4h": 400, "240min": 400, "day": 2000}
     max_days_entry = limits.get(TIMEFRAME_ENTRY, 180)
     max_days_anchor = limits.get(TIMEFRAME_ANCHOR, 180)
     from_entry = (ref_now - timedelta(days=min(LOOKBACK_DAYS, max_days_entry))).strftime("%Y-%m-%d")

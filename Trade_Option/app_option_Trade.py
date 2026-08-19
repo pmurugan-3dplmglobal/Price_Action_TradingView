@@ -57,8 +57,8 @@ PROGRAMS = {
         "color": "#58a6ff",
         "log_file": INDEX_LOG_FILE,
         "config_fields": {
-            "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "3minute"},
-            "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "15minute"},
+            "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "3minute"},
+            "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "15minute"},
             "capital": {"label": "Capital", "type": "number", "default": 100000.0},
             "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0},
             "enable_swingfilter": {
@@ -77,8 +77,8 @@ PROGRAMS = {
         "color": "#3fb950",
         "log_file": NIFTY50_LOG_FILE,
         "config_fields": {
-            "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "15minute"},
-            "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","day"], "default": "30minute"},
+            "timeframe_entry": {"label": "Entry Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "15minute"},
+            "timeframe_anchor": {"label": "Anchor Timeframe", "type": "select", "options": ["3minute","5minute","10minute","15minute","30minute","60minute","75min","4hr","day"], "default": "30minute"},
             "capital": {"label": "Capital", "type": "number", "default": 100000.0},
             "strike_range": {"label": "Strike Range (±)", "type": "number", "default": 0},
             "enable_swingfilter": {
@@ -2101,6 +2101,7 @@ HTML_TEMPLATE = """
                                 <label style="font-size:11px;color:#8b949e;display:block;margin-bottom:4px;">Timeframe</label>
                                 <select id="an-tf" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;font-size:12px;">
                                     <option value="30minute" selected>30min (Same Entry & Anchor TF)</option>
+                                    <option value="4hr">4hr (4 Hours)</option>
                                     <option value="75min">75min (Anchor TF)</option>
                                     <option value="60minute">60min (Anchor TF)</option>
                                     <option value="15minute">15min (Entry TF)</option>
@@ -2913,7 +2914,7 @@ def api_analyze_trade():
 
         timeframe_entry = timeframe
         timeframe_anchor = "30minute" if engine == "nifty50" else "15minute"
-        if timeframe in ["day", "week", "4hr", "1hr", "75min"]:
+        if timeframe in ["day", "week", "4hr", "4hour", "240min", "1hr", "75min"]:
             timeframe_anchor = timeframe
 
         analysis = derive_sl_targets_for_contract(None, symbol, entry_price, timeframe_entry, timeframe_anchor)

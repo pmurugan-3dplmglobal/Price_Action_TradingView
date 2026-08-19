@@ -2132,6 +2132,7 @@ HTML_TEMPLATE = """
                                 <label style="font-size:11px;color:#8b949e;display:block;margin-bottom:4px;">Timeframe</label>
                                 <select id="an-tf" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;font-size:12px;">
                                     <option value="30minute" selected>30min (Same Entry & Anchor TF)</option>
+                                    <option value="4hr">4hr (4 Hours)</option>
                                     <option value="75min">75min (Anchor TF)</option>
                                     <option value="60minute">60min (Anchor TF)</option>
                                     <option value="15minute">15min (Entry TF)</option>

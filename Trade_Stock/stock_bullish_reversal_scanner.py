@@ -89,7 +89,7 @@ def run_scan(kite):
     tf_clean = str(TIMEFRAME_ENTRY).lower()
     if tf_clean in ["week", "weekly", "w", "1w", "day", "d", "1d"]:
         fetch_tf = "day"
-    elif tf_clean in ["3hr", "3h", "180min", "180minute", "4h", "4hour", "240min", "240minute", "1hr", "1h", "60min", "60minute"]:
+    elif tf_clean in ["3hr", "3hrs", "3h", "180min", "180minute", "4hr", "4hrs", "4h", "4hour", "240min", "240minute", "1hr", "1h", "60min", "60minute"]:
         fetch_tf = "60minute"
     elif tf_clean in ["75min", "75mins", "75m", "75minute"]:
         fetch_tf = "15minute"
