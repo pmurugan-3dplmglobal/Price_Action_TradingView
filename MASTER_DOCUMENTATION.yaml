@@ -312,7 +312,7 @@ sl_buffer_scaling:
     index_spot: "Price >= ₹500: max(2.00, Price * 0.5%)"
 
 parabolic_swing_filter_phase_0:
-  description: "Phase 0 Parabolic Multi-Swing Curve & Macro Cascade Exhaustion Filter (parabolic_curve_filter.py)"
+  description: "Phase 0 Parabolic Multi-Swing Curve & Macro Cascade Exhaustion Filter (common/swing_detection.py & common/parabolic_curve_filter.py)"
   config_key: "enable_swingfilter"
   core_rules:
     curvature_polynomial_fit: "Fits 2nd-degree polynomial y = ax^2 + bx + c across swing waves. Bull: concave down (a < 0) exhaustion domes; Bear: concave up (a > 0) rally cups. Goodness of fit R^2 >= 0.55 and vertex in central 15%-85% window."

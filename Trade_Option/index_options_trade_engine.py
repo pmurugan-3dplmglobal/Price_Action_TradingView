@@ -224,7 +224,8 @@ def _process_fyers_option_strike(opt, sym, cfg):
 
         waves = swing_struct.get("valid_arch_count", 0) if ENABLE_SWINGFILTER else 0
         has_abs = swing_struct.get("has_terminal_base", False) if ENABLE_SWINGFILTER else False
-        para_badge = f"🌊 {waves}S{'+Abs' if has_abs else ''}" if ENABLE_SWINGFILTER else "N/A"
+        tier_badge = swing_struct.get("tier_badge", "") if ENABLE_SWINGFILTER else ""
+        para_badge = f"{tier_badge} {waves}S{'+Abs' if has_abs else ''}".strip() if ENABLE_SWINGFILTER else "N/A"
 
         trade = {
             "symbol": sym,

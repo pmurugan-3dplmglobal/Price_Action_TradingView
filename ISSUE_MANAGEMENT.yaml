@@ -8,6 +8,54 @@ meta:
   purpose: Document operational failures, root causes, regression fixes, and system enhancements.
 
 issues:
+  - id: ISSUE-054
+    title: Scan Clear Persistence Fix (Cycle DB, In-Memory Caches & UI Polling Decoupling)
+    severity: MEDIUM
+    category: Dashboard UI / State Reset
+    family: DATA_INTEGRITY
+    date_reported: "2026-08-18"
+    symptom: |
+      Clicking "Clear" on Today's Scan table resulted in old/staged trades and active positions suddenly re-appearing within 1-2 seconds.
+    root_cause: |
+      1. api_scan_clear in app_option_Trade.py & app_Sock_Trade.py did not clear the SQLite cycle trade staging store (trade_db.clear_cycle_trades) or flush in-memory JSON caches (_parsed_json_cache / _file_mtime_cache).
+      2. In templates/index.html, renderScanSection merged active portfolio positions (d.positions) into the scan table during 1-second background polling, overriding window._scanCleared.
+    affected_files:
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - Trade_Option/templates/index.html
+      - Trade_Stock/templates/index.html
+    resolution: |
+      1. Updated api_scan_clear to call trade_db.clear_cycle_trades across all engines, write clean empty structures to all 4 display files, and clear _file_mtime_cache & _parsed_json_cache.
+      2. Guarded renderScanSection in templates/index.html with window._scanCleared check at function entry, preventing active position injection until a fresh scan cycle is triggered.
+    status: COMPLETED
+
+  - id: FEATURE-002
+    title: Parabolic Multi-Swing Cascade Filter (enable_swing_filter)
+    severity: ENHANCEMENT
+    category: Strategy & Noise Filter
+    date_reported: "2026-08-18"
+    symptom: |
+      Need for an institutional-grade exhaustion filter requiring >= 3 cascading parabolic waves (polynomial regression R^2 >= 0.55) and terminal base absorption before Anchor A and BCD breakout entry.
+    root_cause: |
+      New structural price action filter designed to eliminate falling knives and premature bottom-fishing traps.
+    affected_files:
+      - common/swing_detection.py
+      - common/trading_core.py
+      - common/display_writer.py
+      - common/resolve.py
+      - Trade_Stock/stock_reversal_scanner.py
+      - input/program_config.json
+      - Trade_Stock/templates/index.html
+      - Trade_Option/templates/index.html
+      - scratch/run_full_regression_test.py
+    resolution: |
+      1. Implemented common/swing_detection.py with is_parabolic_arch_enhanced, extract_swing_pivots, validate_parabolic_cascade_structure, and detect_parabolic_multi_swings.
+      2. Configured toggleable flag enable_swing_filter, swing_min_waves: 3, and swing_min_r2: 0.55 across daily, bear_trade, nifty50, and index sections in input/program_config.json.
+      3. Wired Phase 0 filter into stock_reversal_scanner.py (Stock Dashboard) and common/resolve.py scan_symbol (Option Dashboard engines).
+      4. Serialized swing_waves and terminal_base fields in display_writer.py and rendered visual badges in stock and option dashboards.
+      5. Added Test 13 in scratch/run_full_regression_test.py verifying 100% test pass.
+    status: COMPLETED
+
   - id: FEATURE-001
     title: Stock EMA Engine & EMA Scan Tab (13 EMA / 44 EMA Crossover)
     severity: ENHANCEMENT
@@ -1592,9 +1640,9 @@ issues:
       5. Updated fetch_instruments in index_options_trade_engine.py to persist NFO/BFO combined instrument dump to NFO_CACHE_FILE for cache lookups.
     status: RESOLVED
 
-  ISSUE-064:
+  - id: ISSUE-064
     title: Re-entered contracts blocked by stale exit guard order IDs (e.g. BANKNIFTY26AUG57600CE)
-    date: 2026-08-14
+    date_reported: 2026-08-14
     category: RISK_EXECUTION
     severity: HIGH
     description: >
@@ -1602,7 +1650,7 @@ issues:
       was saved in executed_exit_orders.json. If the same contract was subsequently re-entered later in the day,
       the stale exit record was not cleared and is_contract_exit_executed considered the previous COMPLETE order
       as proof that the current position had already exited, skipping the market sell order entirely.
-    resolution: >
+    resolution: |
       1. Updated close_position and close_stock_position in common/position_monitor.py and common/trading_core.py
          to verify if the active position is a re-entry (entry_time > exit timestamp) or if live Kite net positions
          still hold quantity > 0. If so, automatically reset the stale exit guard and place the sell order.
@@ -1612,281 +1660,216 @@ issues:
       3. Cleared stale exit guard record for BANKNIFTY26AUG57600CE.
     status: RESOLVED
 
-  - id: FEATURE-065
-    title: Full Open-Source TradingView Transition (Zero Zerodha Credentials & Pure Data Feeds)
-    severity: ENHANCEMENT
-    category: Architecture / Open-Source Migration
-    family: OPEN_SOURCE
+  - id: ISSUE-065
+    title: NameError 'clear_executed_exit' Is Not Defined in index_options_trade_engine.py
+    severity: HIGH
+    category: Index Options Trade Execution
+    family: BUG_FIX
     date_reported: "2026-08-18"
     symptom: |
-      System required active Zerodha Kite OAuth token generation, daily login, and proprietary API libraries (kiteconnect) to function.
+      Index engine threw error: "index: Entry failed for BANKNIFTY26AUG57200CE: name 'clear_executed_exit' is not defined".
     root_cause: |
-      Legacy dependency on Zerodha Kite Connect API for historical data fetching, quote lookups, and session management.
+      clear_executed_exit was called in execute_index_entry (line 212) and sync_positions (line 371) inside
+      Trade_Option/index_options_trade_engine.py but was omitted from the "from trading_core import (...)" import block.
+      Similarly, stock_options_trade_engine.py referenced avg_rr in execute_highest_rr_trade without defining it from best dict.
     affected_files:
-      - common/trading_core.py
-      - common/spot_enricher.py
-      - common/websocket_monitor.py
-      - Trade_Option/automated_strategy_exporter.py
       - Trade_Option/index_options_trade_engine.py
       - Trade_Option/stock_options_trade_engine.py
-      - Trade_Stock/stock_bullish_reversal_scanner.py
-      - Trade_Stock/stock_bearish_reversal_scanner.py
-      - Trade_Option/requirements.txt
-      - Trade_Stock/requirements.txt
-      - backtest/run_kite_master_backtest.py
-      - backtest/run_official_option_strike_backtest.py
-      - CLOUD_DEPLOYMENT_GUIDE.md
-      - MASTER_DOCUMENTATION.yaml
-      - AGENTS.md
+      - ISSUE_MANAGEMENT.yaml
     resolution: |
-      1. Removed kiteconnect dependency from requirements.txt and cloud deployment scripts, adding yfinance and requests.
-      2. Streamlined candle and quote fetching to 100% open-source feeds (yfinance + Yahoo Finance HTTP fallback + multi-timeframe candle resampling).
-      3. Decoupled order execution to simulated/paper trading with local trade database tracking (trades.sqlite3 / trade_db.py) and automated trailing.
-      4. Removed Kite-dependent backtest scripts in favor of pure open-source backtester (run_master_backtest.py).
-      5. Updated all engines, scanners, exporter daemon, and web dashboards to run cleanly with zero broker credentials.
+      1. Added clear_executed_exit to trading_core import block in Trade_Option/index_options_trade_engine.py.
+      2. Defined avg_rr = best.get("rr", 0) in execute_highest_rr_trade in Trade_Option/stock_options_trade_engine.py.
+      3. Populated entry_time for active trade ID 460 in trades.sqlite3.
+      4. Verified all 12 regression tests in scratch/run_full_regression_test.py passed with 100% success.
     status: RESOLVED
 
-  - id: BUGFIX-066
-    title: Fix Daily Scanner Trade Journal Path Split-Brain (Errno 2 No such file trade_journal.csv)
-    severity: HIGH
-    category: Logging & Persistence
-    family: PATH_SPLIT
+  - id: ISSUE-066
+    title: Hammer / Baby Candle & Shooting Star Anchor Pattern Precision Refinement
+    severity: MEDIUM
+    category: Price Action Pattern Recognition
+    family: FEATURE_ENHANCEMENT
     date_reported: "2026-08-18"
     symptom: |
-      Daily stock scanner logged: "daily: Journal write failed: [Errno 2] No such file or directory: 'output/monitor/trade_journal.csv'".
+      Spinning tops or neutral Dojis with non-trivial opposite wicks could pass the basic lower_wick > upper_wick
+      rule without ensuring strong directional conviction near the extremes of the candle.
     root_cause: |
-      JOURNAL_FILE in common/trading_core.py was defined as a relative path string "output/monitor/trade_journal.csv". When scanners ran from Trade_Stock/ directory, relative path resolution failed if parent directories did not exist in CWD.
+      find_anchor_hammer_baby and find_anchor_shooting_star_baby previously lacked an upper/lower shadow percentage
+      ceiling and close position ratio check, allowing balanced candles (e.g. spinning tops) with small body differentials
+      to qualify.
     affected_files:
+      - common/patterns_bull.py
+      - common/patterns_bear.py
       - common/trading_core.py
-      - Trade_Stock/stock_bullish_reversal_scanner.py
-      - Trade_Stock/stock_bearish_reversal_scanner.py
+      - ISSUE_MANAGEMENT.yaml
     resolution: |
-      1. Canonicalized JOURNAL_FILE to absolute path: os.path.join(BASE_DIR, "output", "monitor", "trade_journal.csv") in common/trading_core.py.
-      2. Updated log_to_journal to resolve target_journal_file = os.path.abspath(journal_file or JOURNAL_FILE) and create parent directories via os.makedirs(os.path.dirname(target_journal_file), exist_ok=True) before open().
-      3. Canonicalized display paths in lookup_scan_sl_target.
-    status: RESOLVED
-
-  - id: BUGFIX-067
-    title: Fix Position Monitor PRODUCT_NRML / PRODUCT_MIS NoneType Attribute Error in Open-Source Mode
-    severity: HIGH
-    category: Engine Execution
-    family: OPEN_SOURCE_MIGRATION
-    date_reported: "2026-08-18"
-    symptom: |
-      Options Dashboard logged: "nifty50: Position monitor error: 'NoneType' object has no attribute 'PRODUCT_NRML'".
-    root_cause: |
-      In stock_options_trade_engine.py and index_options_trade_engine.py, monitor_active_positions passed kite.PRODUCT_NRML and kite.PRODUCT_MIS directly into shared_monitor_positions without safe getattr() fallback when kite was None in open-source mode.
-    affected_files:
-      - Trade_Option/stock_options_trade_engine.py
-      - Trade_Option/index_options_trade_engine.py
-      - common/trading_core.py
-    resolution: |
-      1. Updated stock_options_trade_engine.py to use getattr(kite, "PRODUCT_NRML", "NRML") in monitor_active_positions and execute_highest_rr_trade.
-      2. Updated index_options_trade_engine.py to use getattr(kite, "PRODUCT_MIS", "MIS") and getattr(kite, "PRODUCT_NRML", "NRML").
-      3. Updated common/trading_core.py close_stock_position to safely resolve getattr(kite, "PRODUCT_CNC", "CNC") and getattr(kite, "PRODUCT_MIS", "MIS").
-    status: RESOLVED
-
-  - id: FEAT-068
-    title: Fyers Direct Option Chart Scanning & Real-Time Premium Breakout Engine
-    severity: FEATURE
-    category: Market Data & Strategy Execution
-    family: BROKER_INTEGRATION
-    date_reported: "2026-08-18"
-    symptom: |
-      User requested direct scanning of Option CE/PE charts on Port 6060 (Options Dashboard) so that entry, SL, targets, and chart buttons show actual option premium prices instead of underlying spot index points.
-    root_cause: |
-      Feature implementation. Previous system evaluated underlying spot index candles and mapped to strike prices without reading real historical OHLCV premium candles of the option contracts themselves.
-    affected_files:
-      - common/fyers_session.py
-      - common/fyers_data.py
-      - Trade_Option/index_options_trade_engine.py
-      - Trade_Option/stock_options_trade_engine.py
-      - Trade_Option/app_option_Trade.py
-      - Fyers_Access_Token_gen.py
-    resolution: |
-      1. Integrated Fyers API v3 authentication and OAuth token exchange in Fyers_Access_Token_gen.py and common/fyers_session.py.
-      2. Built multi-timeframe candle fetcher and option chain discovery in common/fyers_data.py with rate-limiting, retry logic, and thread-safe in-memory caching.
-      3. Updated Trade_Option/index_options_trade_engine.py and stock_options_trade_engine.py to scan ATM/near-ATM CE and PE option chart candles directly via parallel ThreadPoolExecutor workers.
-      4. Algorithm applies 5 anchor detectors + A-B-C-D breakout detection directly to Option OHLCV charts, outputting true Option Entry (e.g. ₹34.30), Option SL (₹24.79), and Targets (₹57.90).
-5. Enhanced TradingView chart launcher in Trade_Option/app_option_Trade.py to open contract-specific charts when clicking "CHART 📈".
-     status: RESOLVED
-
-  - id: BUGFIX-069
-    title: TradingView Dashboards Crash-Loop on VM (Missing fyers-apiv3 Dependency)
-    severity: HIGH
-    category: Deployment & Dependencies
-    date_reported: "2026-08-18"
-    symptom: |
-      sudo systemctl restart tradingview-options tradingview-stock left both services in
-      activating (auto-restart) with Main process exit status=1. systemd restart counter climbed to 40+.
-    root_cause: |
-      FEAT-068 added `from fyers_apiv3 import fyersModel` at import time in common/fyers_session.py
-      (imported from Trade_Option/app_option_Trade.py and Trade_Stock/app_Sock_Trade.py), but
-      fyers-apiv3 was not installed in ~/Price_Action_TradingView/venv and was never added to
-      Trade_Option/requirements.txt or Trade_Stock/requirements.txt, so module import failed.
-    affected_files:
-      - common/fyers_session.py
-      - Trade_Option/requirements.txt
-      - Trade_Stock/requirements.txt
-    resolution: |
-      1. Stopped the crash-looping units: sudo systemctl stop tradingview-options tradingview-stock.
-      2. Installed dependency: ~/Price_Action_TradingView/venv/bin/pip install fyers-apiv3 (3.1.16).
-      3. Restarted units and verified 6060/6061 listening and /api/status reachable (HTTP 401 auth gate = healthy).
-      4. Added fyers-apiv3>=3.1.0 to both requirements.txt files.
-    status: RESOLVED
-
-  - id: BUGFIX-070
-    title: Stock Dashboard (6061) Live Log Always Empty (program key mismatch)
+      1. Added Upper Wick Capping for Bullish Hammer/Baby: upper_wick <= 35% of total range and upper_wick <= 50% of lower_wick.
+      2. Added Close Conviction Ratio for Bullish Hammer/Baby: (close - low) / total_range >= 0.60, ensuring close in upper 40%.
+      3. Added Lower Wick Capping for Bearish Shooting Star/Baby: lower_wick <= 35% of total range and lower_wick <= 50% of upper_wick.
+      4. Added Close Conviction Ratio for Bearish Shooting Star/Baby: (close - low) / total_range <= 0.40, ensuring close in lower 40%.
+      5. Enforced mother candle directional color check (Close < Open for Bullish, Close > Open for Bearish).
+      6. Verified 100% test pass on scratch/run_full_regression_test.py.
+  - id: ISSUE-067
+    title: DOM ID Mismatch in Scan Clear Handler (scan-reports-body vs scan-body)
     severity: MEDIUM
-    category: Dashboard UI
-    date_reported: "2026-08-18"
+    category: Dashboard UI / Frontend
+    family: BUG_FIX
+    date_reported: "2026-08-19"
     symptom: |
-      Live Log tab on the Stock dashboard (Port 6061) showed "Waiting for log data..." even though
-      Trade_Stock/output/logs/bull_daily_scanner.log and bull_bear_daily_scanner.log had content.
+      Clicking the "Clear" button in "Today's scan" tab on options or stock dashboards failed silently and did not clear scanned trades in the UI.
     root_cause: |
-      Trade_Stock/app_Sock_Trade.py inline JS hardcoded option-engine program keys
-      d.programs?.index?.log_tail / d.programs?.nifty50?.log_tail, but the Stock dashboard PROGRAMS
-      are keyed `daily` (bullish) and `bear_trade` (bearish), so log_tail was never read/built.
+      renderScanTab in both Trade_Option/templates/index.html and Trade_Stock/templates/index.html referenced an obsolete DOM element ID 'scan-reports-body' when window._scanCleared was true, throwing a null reference TypeError before the clear request and UI reset could proceed. The actual container element ID is 'scan-body'.
     affected_files:
-      - Trade_Stock/app_Sock_Trade.py
+      - Trade_Option/templates/index.html
+      - Trade_Stock/templates/index.html
+      - ISSUE_MANAGEMENT.yaml
     resolution: |
-      Repointed both log concat blocks (logFilter/lf paths) and the Live Log filter dropdown from
-      index/nifty50 to daily/bear_trade so the tail of both stock scanner logs renders in the UI.
+      1. Updated renderScanTab in Trade_Option/templates/index.html and Trade_Stock/templates/index.html to target document.getElementById('scan-body').
+      2. Added automatic reset of window._scanCleared = false when new staged trades arrive in subsequent scan cycles.
+      3. Verified DOM IDs across all templates with zero missing elements and ran the 13-test regression suite with 100% pass.
     status: RESOLVED
 
-  - id: BUGFIX-071
-    title: Fyers Option Chain Returns 0 Results for Stock Symbols (Missing -EQ Suffix)
-    severity: HIGH
-    category: Market Data & Symbol Resolution
-    family: BROKER_INTEGRATION
-    date_reported: "2026-08-18"
-    symptom: |
-      On Port 6060 Options Dashboard, [Nifty 50] Scan Results showed underlying spot prices as
-      Entry/SL/Target (e.g. POWERGRID26AUG265CE Entry: ₹265, SL: ₹264.33) instead of actual
-      option premium values (LTP: ₹4.35). The scan was running on spot charts, not option charts.
-    root_cause: |
-      format_fyers_symbol('POWERGRID') produced 'NSE:POWERGRID' but Fyers option chain API requires
-      'NSE:POWERGRID-EQ' (with -EQ suffix) for equity symbols. Without -EQ, the API returned
-      error code -300 "Please provide a valid symbol" and 0 options. With an empty chain, no
-      _process_fyers_stock_option_strike tasks were created, so the engine either produced no
-      Fyers results or fell back to the Kite/spot path (which scans underlying spot candles and
-      maps to option contract names, displaying spot prices as entry/SL/target).
-      Index symbols (NIFTY, BANKNIFTY, SENSEX) were unaffected because they map through
-      INDEX_SYMBOL_MAP to correct formats (e.g. NSE:NIFTY50-INDEX).
-    affected_files:
-      - common/fyers_data.py
-    resolution: |
-      1. Added format_fyers_equity_symbol() in common/fyers_data.py that appends -EQ suffix for
-         pure equity names (POWERGRID → NSE:POWERGRID-EQ), routes index names through
-         INDEX_SYMBOL_MAP (NIFTY → NSE:NIFTY50-INDEX), and passes through option contract symbols
-         containing digits (POWERGRID26AUG265CE → NSE:POWERGRID26AUG265CE).
-      2. Updated fetch_fyers_option_chain to use format_fyers_equity_symbol instead of
-         format_fyers_symbol for option chain lookups.
-      3. Verified: POWERGRID chain now returns 6 options with real premiums (₹4.55 for 265CE);
-         NIFTY/BANKNIFTY/SENSEX chains still work; import smoke tests pass for both engines.
-    status: RESOLVED
-
-  - id: BUGFIX-072
-    title: Option Dashboard (6060) Live Log Not Updating (log_tail stale behind cache)
-    severity: MEDIUM
-    category: Dashboard UI
-    family: UI
-    date_reported: "2026-08-18"
-    symptom: |
-      On Port 6060 Options Dashboard the Live Log tab appeared to never update even though
-      Trade_Option/output/logs/bull_nifty50_scanner.log and bull_index_trade_engine.log were
-      being appended every scan cycle. Dashboard polls /api/status → 200 every 3s, but the log
-      panel rendered no lines. Browser was authenticated (session valid); no errors in journalctl.
-    root_cause: |
-      api_status() served programs.<pid>.log_tail purely from cached_data["log_tail"], which is
-      only refreshed by the background refresh_data() thread. If that thread stalls on any earlier
-      section (load_positions / load_journal / compute_stats / get_all_trades) the log block
-      (which ran after those sections) is skipped each cycle, so the cache never receives the
-      growing log file tail. The Stock dashboard had the same design but with NO outer try/except
-      at all, so a single raising statement could kill the refresh thread permanently.
-    affected_files:
-      - Trade_Option/app_option_Trade.py
-      - Trade_Stock/app_Sock_Trade.py
-    resolution: |
-      1. api_status() now reads tail_log() live per program (mtime-cached file read) with fallback
-         to cached_data["log_tail"], so the Live Log is always fresh on every poll regardless of
-         background-thread state (both dashboards).
-      2. refresh_data() reordered in both dashboards so the per-program log_tail/scans/scan_summary
-         block runs FIRST inside the data lock, before positions/journal/stats.
-      3. Trade_Stock/app_Sock_Trade.py refresh_data() wrapped in an outer try/except (logging.error
-         + continue loop) so no single failure can permanently kill the thread.
-      4. Live execution flags (nifty50_live.flag / index_live.flag) removed from VM + local to make
-         live order placement OFF by default; the dashboard Live toggle endpoints are unchanged and
-         re-create the flags when enabled on demand.
-    status: RESOLVED
-
-  - id: BUGFIX-073
-    title: Scan-Trade Candle Timestamps Show Off-Market UTC Time (Fyers candles missing IST tz)
-    severity: MEDIUM
-    category: Market Data & Symbol Resolution
-    family: BROKER_INTEGRATION
-    date_reported: "2026-08-18"
-    symptom: |
-      Staged/match rows on the dashboards showed entry/signal times like 17-08-26 07:45 (07:45 = pre-
-      market, off-market time) instead of the actual candle-formed IST time (which at 17:45 UTC epoch
-      is 13:15 IST). Example row: BHARTIARTL26AUG1940PE BASE_ABCD at "17-08-26 07:45 07:45".
-    root_cause: |
-      common/fyers_data.py fetch_fyers_candles() converted the Fyers epoch timestamp with
-      dt.fromtimestamp(c[0]) which uses the PROCESS LOCAL timezone. The Oracle Cloud VM runs in GMT
-      (timezone +0000), so fromtimestamp() produced the UTC wall-clock (07:45) and the code then
-      hardcoded "+05:30" onto the string, mislabeling GMT hours as IST. The displayed value was
-      5h30m too early. The yfinance fallback path (trading_core.fetch_open_source_candles) already
-      did tz_localize('UTC').tz_convert('Asia/Kolkata'), but the Fyers path did not.
-    affected_files:
-      - common/fyers_data.py
-    resolution: |
-      1. Added IST_TZ = timezone(timedelta(hours=5, minutes=30)) constant and switched the candle
-         build to dt.fromtimestamp(c[0], tz=IST_TZ), making the conversion machine-independent
-         (GMT or IST host both produce correct IST timestamps, e.g. 2026-08-17 13:15:00+05:30).
-      2. Display layer (clean_timestamp / _format_timestamp) already strips the offset and shows the
-         IST wall-clock, so no dashboard change was needed.
-      Note: both option engines (stock_options / index_options) scan via fetch_fyers_candles, so both
-      dashboards are fixed; engines must be restarted to load the new module.
-    status: RESOLVED
-
-  - id: FEAT-074
-    title: Parabolic Multi-Swing Curve & Cascade Structure Detection Filter (Phase 0)
+  - id: ISSUE-068
+    title: Stock Dashboard Scanner Path Alignment and Option Position Isolation
     severity: LOW
-    category: Strategy & Indicator Logic
-    family: SIGNAL_GENERATION
-    date_reported: "2026-08-18"
+    category: Dashboard / Scanners
+    family: BUG_FIX
+    date_reported: "2026-08-19"
     symptom: |
-      Need macro cycle exhaustion validation before Anchor (A) and B-C-D breakout to filter out
-      low-probability traps and linear momentum dumps.
-    root_cause: N/A (New Feature)
+      Stock dashboard (port 5051) live log tabs for Bullish and Bearish scanners did not stream scanner logs, and option positions in Kite triggered unwanted stock exit attempts.
+    root_cause: |
+      1. Trade_Stock/app_Sock_Trade.py pointed to non-canonical log file paths ('logs/stock_bullish_reversal_scanner.log') instead of canonical 'output/logs/bull_daily_scanner.log' and 'output/logs/bull_bear_daily_scanner.log'.
+      2. PROGRAMS dictionary in app_Sock_Trade.py lacked the 'Trade_Stock/' prefix for scanner scripts.
+      3. Position sync loop in app_Sock_Trade.py did not filter out derivative/option contracts (NFO/BFO), attempting cash stock exits on option symbols.
     affected_files:
-      - common/parabolic_curve_filter.py
-      - common/trading_core.py
-      - Trade_Stock/input/program_config.json
+      - common/paths.py
       - Trade_Stock/app_Sock_Trade.py
-      - Trade_Stock/stock_bullish_reversal_scanner.py
-      - Trade_Stock/stock_bearish_reversal_scanner.py
-      - Trade_Option/stock_options_trade_engine.py
-      - Trade_Option/index_options_trade_engine.py
-      - Trade_Option/app_option_Trade.py
-      - scratch/test_parabolic_curve.py
+      - Trade_Stock/stock_reversal_scanner.py
+      - ISSUE_MANAGEMENT.yaml
     resolution: |
-      1. Implemented common/parabolic_curve_filter.py with:
-         - is_parabolic_arch_enhanced: 2nd-degree polynomial fit (y = ax^2 + bx + c), concave down (a < 0) for
-           bullish selloff exhaustion dome or concave up (a > 0) for bearish rally cup, vertex in central 15%-85%
-           range, R^2 >= 0.55 goodness-of-fit.
-         - extract_swing_pivots: fractal extrema detection with rolling windows and adjacent deduplication.
-         - validate_parabolic_cascade_structure: verifies macro lower-high cascade (Bull) or higher-low cascade (Bear)
-           and Point 4 Terminal Absorption Base (<2% diff).
-         - detect_parabolic_multi_swings: top-level Phase 0 orchestrator with recency enforcement (max_bars_since_base <= 18).
-         - is_anchor_after_terminal_base: ensures Anchor Candle A forms AT or AFTER the 4th swing (terminal base).
-      2. Re-exported in common/trading_core.py for unified access across scanners and engines.
-      3. Integrated into Trade_Stock/stock_bullish_reversal_scanner.py and stock_bearish_reversal_scanner.py as Phase 0
-         filter with configurable enable_swingfilter, min_cascading_waves, and min_r2 in program_config.json.
-      4. Integrated into Trade_Option/stock_options_trade_engine.py and index_options_trade_engine.py to evaluate
-         Option premium charts on the Anchor Timeframe before Anchor A & B-C-D breakout staging.
-      5. Enriched both Stock (6061) and Option (6060) dashboards with Parabolic column and '🌊 4S' badge display.
-      6. Full unit test suite created in scratch/test_parabolic_curve.py with 100% pass rate.
+      1. Added BULL_DAILY_SCAN_LOG and BEAR_DAILY_SCAN_LOG to common/paths.py.
+      2. Updated Trade_Stock/app_Sock_Trade.py and Trade_Stock/stock_reversal_scanner.py to use canonical log paths and full script paths.
+      3. Added filter in Trade_Stock position loop to ignore derivative/option symbols.
+      4. Verified live scan execution for both Bullish and Bearish scanners and passed all 13 regression tests.
     status: RESOLVED
 
+  - id: ISSUE-069
+    title: Stock Reversal Scanner Rate-Limiting Resolution (HTTP 429 Too Many Requests)
+    severity: MEDIUM
+    category: Data Quality & API Rate Limiting
+    family: BUG_FIX
+    date_reported: "2026-08-19"
+    symptom: |
+      During stock reversal scans (e.g. NIFTY_NEXT_100 universe), scanner logged "[WARNING] Data error for <SYMBOL>: Too many requests" on multiple symbols (NMDC, OBEROIRLTY, TATAELXSI, TVSMOTOR, TATAPOWER, UNITDSPR, VEDL, VBL).
+    root_cause: |
+      1. Trade_Stock/stock_reversal_scanner.py submitted unthrottled raw lambdas calling kite.historical_data across ThreadPoolExecutor(max_workers=10) with only 0.05s intervals.
+      2. When Bull and Bear scanners ran in parallel, up to 20 concurrent threads overwhelmed Kite Connect's 3 req/sec historical data rate limit.
+      3. Raw calls bypassed the shared fetch_and_resample_candles retry mechanism, exponential backoff, and 5s memory cache.
+    affected_files:
+      - Trade_Stock/stock_reversal_scanner.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Switched historical data fetching in Trade_Stock/stock_reversal_scanner.py to use common/trading_core.py fetch_and_resample_candles.
+      2. Integrated automatic 4-attempt exponential backoff on HTTP 429 / connection / timeout errors and shared 5-second candle caching.
+      3. Tuned thread pool concurrency to max_workers=4 with 0.15s thread submission pacing to remain safely within Zerodha API limits.
+      4. Verified all 13 regression tests in scratch/run_full_regression_test.py passed with 100% success.
+    status: RESOLVED
+
+  - id: ISSUE-070
+    title: Proposal C Multi-Tiered Scoring & Soft Priority Market Structure Integration
+    severity: ENHANCEMENT
+    category: Market Structure / Pattern Detection & UI
+    family: FEATURE
+    date_reported: "2026-08-19"
+    symptom: |
+      Binary hard rejection in Stage 0 Parabolic Cascade filter (requiring >= 3 waves + 4 pivots on a single timeframe) caused over-filtering of high-probability 2-wave Double Bottoms, Momentum Flags, and Liquidity Sweeps, leading to 0 staged trades on 90%+ trading days.
+    root_cause: |
+      Stage 0 filter applied a hard binary gatekeeper (return None when waves < 3), discarding valid setups with high Risk-to-Reward (R:R >= 1.88) and high-conviction candlestick footprints.
+    affected_files:
+      - common/swing_detection.py
+      - common/patterns_bull.py
+      - common/patterns_bear.py
+      - common/resolve.py
+      - common/display_writer.py
+      - Trade_Option/templates/index.html
+      - Trade_Stock/templates/index.html
+      - docs/STAGE_0_PARABOLIC_CASCADE_REFERENCE.md
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Implemented Proposal C Multi-Tiered Soft Scoring in common/swing_detection.py, common/patterns_bull.py, and common/patterns_bear.py:
+         - Tier 1 (Gold): >= 3 Parabolic Waves (R^2 >= 0.55) + Terminal Absorption Base + A-B-C-D Breakout + R:R >= 2.5.
+         - Tier 2 (Core): >= 2 Parabolic Waves (R^2 >= 0.50) OR High-Conviction Candlestick Anchor (Engulfing, Hammer Baby, LL/HH Sweep) + A-B-C-D Breakout + R:R >= 1.88.
+         - Tier 3 (Momentum): Trend Continuation Re-Entry (Page 16/17) / Pullback + R:R >= 1.88.
+      2. Integrated Tier metadata (tier, tier_label, tier_badge) into display serializers (common/display_writer.py, common/resolve.py).
+      3. Rendered Tier Badges (🥇 T1 Gold, 🥈 T2 Core, 🥉 T3 Momentum) in Staged Scans table across Option (port 5050) and Stock (port 5051) dashboard templates.
+      4. Preserved existing toggle-based execution actions (live toggle / Buy buttons / Paper mode) with zero direct auto-firing.
+      5. Verified 13/13 regression suite tests passed with 100% success.
+  - id: ISSUE-071
+    title: Dual-Monitor Exit Race Condition and Margin Rejection Spam Loop Fix
+    severity: HIGH
+    category: Position Management / Execution Guard
+    family: DEFECT
+    date_reported: "2026-08-19"
+    symptom: |
+      At 09:45:00 AM failsafe expiration, rapid duplicate SELL orders fired every 2-3 seconds for active positions (POWERGRID, HINDALCO, NTPC), leading to repeated "REJECTED - Insufficient funds (margin required 128k)" errors in Kite orderbook.
+    root_cause: |
+      1. Concurrent execution: Options Dashboard (app_option_Trade.py) failsafe monitor and engine active position monitor both initiated exits simultaneously at 09:45 AM.
+      2. The primary SELL order locked held long quantity in Kite orderbook; secondary SELL orders were treated by Zerodha as naked short sells requiring overnight margin.
+      3. Faulty exit guard reset: position_monitor.py had 'has_live_qty' in guard reset condition, which wiped EXECUTED_EXITS immediately while an open order was pending fill.
+      4. Instant retry loop: REJECTED status in orderbook immediately cleared exit guards without backoff cooldown.
+    affected_files:
+      - common/position_monitor.py
+      - common/trading_core.py
+      - Trade_Option/app_option_Trade.py
+      - Trade_Stock/app_Sock_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Live Net Quantity Cap: close_position & close_stock_position verify net held quantity against Kite API. If net_qty <= 0, mark as ALREADY_CLOSED and skip order placement. If net_qty > 0, clamp order quantity to min(qty, net_held_qty) to prevent naked shorts.
+      2. Exit Guard Reset Fix: Removed 'has_live_qty' from guard reset logic; only reset guard on genuine newer re-entries (pos_entry_time > exit_order_timestamp).
+      3. Rejection Cooldown & Order Debounce: Enforced 30-second cooldown on REJECTED/CANCELLED orders and 15-second fill-wait on OPEN/TRIGGER PENDING orders before attempting fallbacks.
+      4. Dashboard Failsafe Check: Added is_contract_exit_executed checks in app_option_Trade.py and app_Sock_Trade.py failsafe loops to prevent dual-monitor firing.
+      5. Verified 13/13 regression suite tests passed with 100% success.
+  - id: ISSUE-072
+    title: Missing is_live_candle_near_close Import in Bearish Pattern Module
+    severity: MEDIUM
+    category: Scanners / Pattern Detection
+    family: DEFECT
+    date_reported: "2026-08-19"
+    symptom: |
+      During Bearish Reversal Scanner execution, scanner crashed with "[ERROR] Scanner failed: name 'is_live_candle_near_close' is not defined".
+    root_cause: |
+      common/patterns_bear.py referenced is_live_candle_near_close on line 298 during Near-Close D candle evaluation, but was missing the import from common/timeframe_utils.py.
+    affected_files:
+      - common/patterns_bear.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Imported get_adaptive_lookback, resample_timeframe, trading_days_between, is_live_candle_near_close from timeframe_utils in common/patterns_bear.py.
+      2. Ran stock_bearish_reversal_scanner.py end-to-end to verify 0 errors and proper pattern detection.
+      3. Verified 13/13 regression suite tests passed with 100% success.
+    status: RESOLVED
+
+  - id: ISSUE-073
+    title: Full NSE F&O Universe (~210 Stocks) Expansion for Options Trading Engine
+    severity: ENHANCEMENT
+    category: Scanners / Instrument Registry & Universe
+    family: FEATURE
+    date_reported: "2026-08-19"
+    symptom: |
+      Options Trading Engine was hardcoded to only 51 NIFTY 50 constituent stocks in STOCK_REGISTRY, completely missing liquid high-probability setups forming in top F&O stocks (e.g. APLAPOLLO, DIXON, HAL, POLYCAB, PERSISTENT).
+    root_cause: |
+      STOCK_REGISTRY in common/registries.py was statically populated with only 51 Nifty 50 stocks without dynamic F&O instrument discovery from Kite NFO master.
+    affected_files:
+      - common/registries.py
+      - common/trading_core.py
+      - common/equity_universe.py
+      - Trade_Option/stock_options_trade_engine.py
+      - Trade_Option/app_option_Trade.py
+      - input/program_config.json
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Added sync_fno_stock_registry() in common/registries.py & common/trading_core.py to dynamically discover all ~210 NSE F&O underlying equities from NFO instrument master, resolve tokens, and calculate exact lot sizes & strike steps.
+      2. Added TARGET_UNIVERSE support ("FNO_ALL", "NIFTY50", "NIFTY_NEXT_100", "NIFTY_MIDCAP_100") in input/program_config.json and Trade_Option/app_option_Trade.py config modal.
+      3. Enhanced scan_all_symbols in Trade_Option/stock_options_trade_engine.py to scan the full F&O universe with 5-thread concurrency and API rate-limit pacing.
+      4. Verified dynamic sync of 208+ liquid F&O stocks (including APLAPOLLO, DIXON, HAL, POLYCAB).
+      5. Verified 13/13 regression suite tests passed with 100% success.
+    status: RESOLVED
 

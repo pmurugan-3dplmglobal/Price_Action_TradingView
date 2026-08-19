@@ -167,10 +167,13 @@ def run_scan(kite):
                     result["Latest_Open"] = round(float(latest['open']), 2)
                     result["Volume"] = int(latest.get('volume', 0))
                     result["Pattern_Name"] = name
+                    waves = para_struct.get("valid_arch_count", 0) if ENABLE_SWINGFILTER else 0
+                    has_abs = para_struct.get("has_terminal_base", False) if ENABLE_SWINGFILTER else False
+                    tier_badge = para_struct.get("tier_badge", "") if ENABLE_SWINGFILTER else ""
                     result["Parabolic_Matched"] = para_struct.get("matched", False) if ENABLE_SWINGFILTER else True
-                    result["Parabolic_Waves"] = para_struct.get("valid_arch_count", 0) if ENABLE_SWINGFILTER else 0
-                    result["Terminal_Base"] = para_struct.get("has_terminal_base", False) if ENABLE_SWINGFILTER else False
-                    result["Parabolic_Score"] = f"{result['Parabolic_Waves']}W{'+Abs' if result['Terminal_Base'] else ''}" if ENABLE_SWINGFILTER else "N/A"
+                    result["Parabolic_Waves"] = waves
+                    result["Terminal_Base"] = has_abs
+                    result["Parabolic_Score"] = f"{tier_badge} {waves}S{'+Abs' if has_abs else ''}".strip() if ENABLE_SWINGFILTER else "N/A"
                     with results_lock:
                         results.append(result)
                     logging.info(f"  -> MATCH: {symbol} | {result['Pattern']} | Entry: {entry_val:.2f} | SL: {result['SL']:.2f} | T1: {result['T1']:.2f} | RR: {result['RR']:.2f} | Parabolic: {result['Parabolic_Score']}")
