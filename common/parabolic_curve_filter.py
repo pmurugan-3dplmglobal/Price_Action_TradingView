@@ -5,6 +5,7 @@ Re-exports reference implementation from common/swing_detection.py.
 """
 from swing_detection import (
     _get_series,
+    clean_liquid_candles,
     is_parabolic_arch_enhanced,
     extract_swing_pivots,
     validate_parabolic_cascade_structure,
@@ -14,6 +15,7 @@ from swing_detection import (
 
 __all__ = [
     "_get_series",
+    "clean_liquid_candles",
     "is_parabolic_arch_enhanced",
     "extract_swing_pivots",
     "validate_parabolic_cascade_structure",

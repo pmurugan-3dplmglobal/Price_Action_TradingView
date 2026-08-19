@@ -163,14 +163,22 @@ def run_scan(kite):
                     result["Volume"] = int(latest.get('volume', 0))
                     waves = para_struct.get("valid_arch_count", 0) if ENABLE_SWINGFILTER else 0
                     has_abs = para_struct.get("has_terminal_base", False) if ENABLE_SWINGFILTER else False
-                    tier_badge = para_struct.get("tier_badge", "") if ENABLE_SWINGFILTER else ""
+                    tier = para_struct.get("tier", 2) if ENABLE_SWINGFILTER else 2
+                    tier_label = para_struct.get("tier_label", "TIER_2_CORE") if ENABLE_SWINGFILTER else "N/A"
+                    tier_badge = para_struct.get("tier_badge", "🥈 T2") if ENABLE_SWINGFILTER else ""
+                    risk_scale = para_struct.get("risk_scale", 1.0) if ENABLE_SWINGFILTER else 1.0
+
                     result["Parabolic_Matched"] = para_struct.get("matched", False) if ENABLE_SWINGFILTER else True
                     result["Parabolic_Waves"] = waves
                     result["Terminal_Base"] = has_abs
+                    result["Parabolic_Tier"] = tier
+                    result["Tier_Label"] = tier_label
+                    result["Tier_Badge"] = tier_badge
+                    result["Risk_Scale"] = risk_scale
                     result["Parabolic_Score"] = f"{tier_badge} {waves}S{'+Abs' if has_abs else ''}".strip() if ENABLE_SWINGFILTER else "N/A"
                     with results_lock:
                         results.append(result)
-                    logging.info(f"  -> BEAR MATCH: {symbol} | {result['Pattern']} | Entry: {entry_val:.2f} | SL: {result['SL']:.2f} | T1: {result['T1']:.2f} | RR: {result['RR']:.2f} | Parabolic: {result['Parabolic_Score']}")
+                    logging.info(f"  -> BEAR MATCH: {symbol} | {result['Pattern']} | {tier_badge} | Entry: {entry_val:.2f} | SL: {result['SL']:.2f} | T1: {result['T1']:.2f} | RR: {result['RR']:.2f} | Parabolic: {result['Parabolic_Score']}")
                     log_to_journal(symbol, result["Pattern"], TIMEFRAME_ENTRY,
                                    "SCAN_MATCH_BEAR", "MATCHED",
                                    f"Entry={entry_val:.2f} SL={result['SL']:.2f} RR={result['RR']:.2f} Parabolic={result['Parabolic_Score']}",
@@ -192,6 +200,10 @@ def run_scan(kite):
                             "parabolic_score": r.get("Parabolic_Score", "N/A"),
                             "parabolic_waves": r.get("Parabolic_Waves", 0),
                             "terminal_base": r.get("Terminal_Base", False),
+                            "tier": r.get("Parabolic_Tier", 2),
+                            "tier_label": r.get("Tier_Label", "N/A"),
+                            "tier_badge": r.get("Tier_Badge", ""),
+                            "risk_scale": r.get("Risk_Scale", 1.0),
                             "timeframe": TIMEFRAME_ENTRY,
                             "side": "SELL",
                             "entry_time": clean_timestamp(r.get("CandleATime") or r.get("CandleTime")),
@@ -220,6 +232,10 @@ def run_scan(kite):
                 "parabolic_score": r.get("Parabolic_Score", "N/A"),
                 "parabolic_waves": r.get("Parabolic_Waves", 0),
                 "terminal_base": r.get("Terminal_Base", False),
+                "tier": r.get("Parabolic_Tier", 2),
+                "tier_label": r.get("Tier_Label", "N/A"),
+                "tier_badge": r.get("Tier_Badge", ""),
+                "risk_scale": r.get("Risk_Scale", 1.0),
                 "timeframe": TIMEFRAME_ENTRY,
                 "side": "SELL",
                 "entry_time": c_time,

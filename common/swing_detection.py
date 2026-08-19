@@ -17,6 +17,28 @@ def _get_series(df: pd.DataFrame, col_name: str) -> pd.Series:
     raise KeyError(f"Column '{col_name}' not found in DataFrame. Available columns: {list(df.columns)}")
 
 
+def clean_liquid_candles(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Strips zero-volume quotation flatlines before swing analysis (Options Protection).
+    Retains only bars after real liquidity / traded spread begins.
+    """
+    if df is None or df.empty:
+        return df
+    if 'volume' in [c.lower() for c in df.columns]:
+        try:
+            vol_s = _get_series(df, 'volume')
+            hi_s = _get_series(df, 'high')
+            lo_s = _get_series(df, 'low')
+            is_liquid = (vol_s > 0) | (hi_s != lo_s)
+            if is_liquid.any():
+                first_valid_idx = is_liquid.idxmax()
+                if isinstance(first_valid_idx, int) and first_valid_idx > 0:
+                    return df.iloc[first_valid_idx:].reset_index(drop=True)
+        except Exception:
+            pass
+    return df
+
+
 def is_parabolic_arch_enhanced(
     df_slice: pd.DataFrame, 
     side: str = "BULL",
@@ -275,21 +297,24 @@ def validate_parabolic_cascade_structure(
         )
 
         # Multi-Tier Soft Classification
-        # Tier 1 (Gold): >= 3 waves + cascade progression + (arch or terminal base)
-        # Tier 2 (Core): >= 2 waves + cascade progression
-        # Tier 3 (Momentum): 1 wave or structural re-entry
+        # Tier 1 (Gold): >= 3 waves + cascade progression + (arch or terminal base) -> 100% Capital (Max Risk)
+        # Tier 2 (Core): >= 2 waves + cascade progression -> 70% Capital (Standard)
+        # Tier 3 (Momentum): 1 wave or structural re-entry -> 50% Capital (Scalp/Light)
         if effective_waves >= 3 and cascade_progression and (wave_details[-1]["is_arch"] or has_terminal_base):
             tier = 1
             tier_label = "TIER_1_GOLD"
             tier_badge = "🥇 T1"
+            risk_scale = 1.0
         elif (effective_waves >= 2 or valid_arches >= 2) and cascade_progression:
             tier = 2
             tier_label = "TIER_2_CORE"
             tier_badge = "🥈 T2"
+            risk_scale = 0.70
         else:
             tier = 3
             tier_label = "TIER_3_MOMENTUM"
             tier_badge = "🥉 T3"
+            risk_scale = 0.50
 
         return {
             "valid": is_full_pattern_valid,
@@ -300,6 +325,7 @@ def validate_parabolic_cascade_structure(
             "tier": tier,
             "tier_label": tier_label,
             "tier_badge": tier_badge,
+            "risk_scale": risk_scale,
             "terminal_pivot_idx": terminal_pivot_idx,
             "bars_since_terminal_base": bars_since_terminal_base,
             "details": wave_details
@@ -315,6 +341,7 @@ def validate_parabolic_cascade_structure(
             "tier": 3,
             "tier_label": "TIER_3_MOMENTUM",
             "tier_badge": "🥉 T3",
+            "risk_scale": 0.50,
             "terminal_pivot_idx": -1,
             "bars_since_terminal_base": 999,
             "details": []
@@ -334,13 +361,16 @@ def detect_parabolic_multi_swings(
     """
     Complete end-to-end multi-swing parabolic cascade detector with Multi-Tier Scoring.
     Evaluates:
-    - Tier 1 (Gold): >= 3 Parabolic Waves (R^2 >= 0.55) with Terminal Absorption Base.
-    - Tier 2 (Core): >= 2 Parabolic Waves (R^2 >= 0.50) (e.g. Double Bottom / Liquidity Sweep).
-    - Tier 3 (Momentum): Trend Continuation / Structural Re-entry.
+    - Tier 1 (Gold): >= 3 Parabolic Waves (R^2 >= 0.55) with Terminal Absorption Base (100% Sizing).
+    - Tier 2 (Core): >= 2 Parabolic Waves (R^2 >= 0.50) (e.g. Double Bottom / Liquidity Sweep) (70% Sizing).
+    - Tier 3 (Momentum): Trend Continuation / Structural Re-entry (50% Sizing).
     """
     effective_max_bars = max_bars_since_base if max_bars_since_base is not None else max_bars_after_terminal
     if effective_max_bars is None:
         effective_max_bars = 18
+
+    # Stage 0: Clean zero-volume quotation flatlines before swing analysis
+    df = clean_liquid_candles(df)
 
     w = max(int(min_candles_per_leg), 1)
     if df is None or len(df) < (w * 2 + 1):
@@ -362,22 +392,9 @@ def detect_parabolic_multi_swings(
             "tier": 3, 
             "tier_label": "TIER_3_MOMENTUM", 
             "tier_badge": "🥉 T3",
+            "risk_scale": 0.50,
             "details": []
         }
-
-    # Strip leading dead zero-volume flatline bars from illiquid option history
-    if 'volume' in [c.lower() for c in df.columns]:
-        try:
-            vol_s = _get_series(df, 'volume')
-            hi_s = _get_series(df, 'high')
-            lo_s = _get_series(df, 'low')
-            valid_mask = (vol_s > 0) | (hi_s != lo_s)
-            if valid_mask.sum() >= (w * 2 + 1):
-                first_valid_idx = valid_mask.idxmax()
-                if isinstance(first_valid_idx, int) and first_valid_idx > 0:
-                    df = df.iloc[first_valid_idx:].reset_index(drop=True)
-        except Exception:
-            pass
         
     pivots = extract_swing_pivots(df, side=side, min_candles_per_leg=w, include_endpoints=True)
     if len(pivots) < 3 and w > 2:

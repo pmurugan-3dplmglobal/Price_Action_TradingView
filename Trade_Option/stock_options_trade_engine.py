@@ -293,9 +293,14 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
         rr = m.get('RR', 0)
         contract_name = opt_sym.replace('NSE:', '').replace('BSE:', '')
 
+        tier = swing_struct.get("tier", 2) if ENABLE_SWINGFILTER else 2
+        tier_label = swing_struct.get("tier_label", "TIER_2_CORE") if ENABLE_SWINGFILTER else "N/A"
+        tier_badge = swing_struct.get("tier_badge", "🥈 T2") if ENABLE_SWINGFILTER else ""
+        risk_scale = swing_struct.get("risk_scale", 1.0) if ENABLE_SWINGFILTER else 1.0
+
         pos_size = 1
         try:
-            risk_amount = (INITIAL_CAPITAL * (MAX_RISK_PERCENT / 100.0))
+            risk_amount = (INITIAL_CAPITAL * (MAX_RISK_PERCENT / 100.0)) * risk_scale
             sl_diff = abs(cl - sl) if sl else 1
             lot_sz = cfg.get("lot_size", 1)
             if sl_diff > 0 and lot_sz > 0:
@@ -305,7 +310,6 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
 
         waves = swing_struct.get("valid_arch_count", 0) if ENABLE_SWINGFILTER else 0
         has_abs = swing_struct.get("has_terminal_base", False) if ENABLE_SWINGFILTER else False
-        tier_badge = swing_struct.get("tier_badge", "") if ENABLE_SWINGFILTER else ""
         para_badge = f"{tier_badge} {waves}S{'+Abs' if has_abs else ''}".strip() if ENABLE_SWINGFILTER else "N/A"
 
         trade = {
@@ -316,6 +320,10 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
             "parabolic_score": para_badge,
             "parabolic_waves": waves,
             "terminal_base": has_abs,
+            "tier": tier,
+            "tier_label": tier_label,
+            "tier_badge": tier_badge,
+            "risk_scale": risk_scale,
             "side": opt.get('option_type'),
             "timeframe": TIMEFRAME_ENTRY,
             "strike": opt.get('strike'),
@@ -332,7 +340,7 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
             "status": "STAGED",
             "feed_source": "FYERS_OPTION_CHART"
         }
-        logging.info(f"CYCLE MATCH staged: {contract_name} | {pat} | {opt.get('option_type')} | Strike {opt.get('strike')} | Size: {pos_size} | Entry: {cl:.2f} | SL: {sl:.2f} | T1: {t1} | RR: {rr}")
+        logging.info(f"CYCLE MATCH staged: {contract_name} | {pat} | {tier_badge} | {opt.get('option_type')} | Strike {opt.get('strike')} | Size: {pos_size} | Entry: {cl:.2f} | SL: {sl:.2f} | T1: {t1} | RR: {rr}")
         return trade
     except Exception as e:
         logging.error(f"Error scanning Fyers stock strike {opt.get('symbol')}: {e}")

@@ -3245,6 +3245,7 @@ def scan_anchor_bcd_breakout_generic(df_entry, df_anchor, side="BULL"):
 
 # Parabolic Multi-Swing Curve & Cascade Structure Filter (swing_detection reference)
 from swing_detection import (
+    clean_liquid_candles,
     is_parabolic_arch_enhanced,
     extract_swing_pivots,
     validate_parabolic_cascade_structure,
