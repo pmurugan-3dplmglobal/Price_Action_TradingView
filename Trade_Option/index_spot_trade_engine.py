@@ -331,7 +331,15 @@ def run_cycle(kite=None, log_scan_ready=True):
     shared_write_display(temp_stored_trades, dict(ACTIVE_POSITIONS), SCAN_DISPLAY_FILE, "index_spot")
 
     staged = temp_stored_trades
-    trade_db.store_cycle_trades("index_spot", staged or [])
+    try:
+        if hasattr(trade_db, "store_cycle_trades"):
+            trade_db.store_cycle_trades("index_spot", staged or [])
+        elif hasattr(trade_db, "stage_cycle_trade"):
+            trade_db.clear_cycle_trades("index_spot")
+            for t in (staged or []):
+                trade_db.stage_cycle_trade("index_spot", t)
+    except Exception as e:
+        logging.warning(f"Failed to record cycle trades in DB: {e}")
 
     if not staged:
         return
