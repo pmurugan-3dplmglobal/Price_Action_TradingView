@@ -1352,6 +1352,9 @@ HTML_TEMPLATE = """
             if (logFilter === 'all' || logFilter === 'index') {
                 allLogs = allLogs.concat(d.programs?.index?.log_tail || []);
             }
+            if (logFilter === 'all' || logFilter === 'index_spot') {
+                allLogs = allLogs.concat(d.programs?.index_spot?.log_tail || []);
+            }
             if (logFilter === 'all' || logFilter === 'nifty50') {
                 allLogs = allLogs.concat(d.programs?.nifty50?.log_tail || []);
             }
@@ -1467,6 +1470,9 @@ HTML_TEMPLATE = """
                 if (lf === 'all' || lf === 'index') {
                     allLogs = allLogs.concat(d.programs?.index?.log_tail || []);
                 }
+                if (lf === 'all' || lf === 'index_spot') {
+                    allLogs = allLogs.concat(d.programs?.index_spot?.log_tail || []);
+                }
                 if (lf === 'all' || lf === 'nifty50') {
                     allLogs = allLogs.concat(d.programs?.nifty50?.log_tail || []);
                 }
@@ -1475,8 +1481,8 @@ HTML_TEMPLATE = """
                 const logBox = document.getElementById('log-body');
                 if (logBox) logBox.scrollTop = logBox.scrollHeight;
 
-                for (const pid of ['index', 'nifty50']) {
-                    const enabled = pid === 'index' ? d.live_execution_index : d.live_execution;
+                for (const pid of ['index', 'index_spot', 'nifty50']) {
+                    const enabled = pid === 'index' ? d.live_execution_index : (pid === 'index_spot' ? d.live_execution_index_spot : d.live_execution);
                     const sw = document.getElementById('live-toggle-' + pid);
                     const lb = document.getElementById('live-label-' + pid);
                     if (sw) { sw.classList.toggle('on', !!enabled); }
@@ -2090,6 +2096,7 @@ HTML_TEMPLATE = """
                             <select onchange="setFilter('log',this.value)" class="filter-select">
                                 <option value="all">All</option>
                                 <option value="index">Index</option>
+                                <option value="index_spot">Index Spot Directional</option>
                                 <option value="nifty50">Nifty 50</option>
                             </select>
                             <button class="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
@@ -2105,6 +2112,7 @@ HTML_TEMPLATE = """
                             <select onchange="setFilter('journal',this.value)" class="filter-select">
                                 <option value="all">All</option>
                                 <option value="index">Index</option>
+                                <option value="index_spot">Index Spot Directional</option>
                                 <option value="nifty50">Nifty 50</option>
                             </select>
                             <button class="clear-logs-btn" onclick="clearJournal()">Clear</button>
