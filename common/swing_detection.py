@@ -26,14 +26,14 @@ def clean_liquid_candles(df: pd.DataFrame) -> pd.DataFrame:
         return df
     if 'volume' in [c.lower() for c in df.columns]:
         try:
-            vol_s = _get_series(df, 'volume')
-            hi_s = _get_series(df, 'high')
-            lo_s = _get_series(df, 'low')
+            vol_s = _get_series(df, 'volume').values
+            hi_s = _get_series(df, 'high').values
+            lo_s = _get_series(df, 'low').values
             is_liquid = (vol_s > 0) | (hi_s != lo_s)
-            if is_liquid.any():
-                first_valid_idx = is_liquid.idxmax()
-                if isinstance(first_valid_idx, int) and first_valid_idx > 0:
-                    return df.iloc[first_valid_idx:].reset_index(drop=True)
+            if np.any(is_liquid):
+                first_valid_pos = int(np.argmax(is_liquid))
+                if first_valid_pos > 0:
+                    return df.iloc[first_valid_pos:].reset_index(drop=True)
         except Exception:
             pass
     return df

@@ -88,7 +88,10 @@ def get_universe_symbols_and_tokens(kite=None, target_index_name="NIFTY50"):
     global _NSE_TOKEN_CACHE
     from trading_core import STOCK_REGISTRY
 
-    symbols = INDICES_REGISTRY_MAP.get(target_index_name)
+    if "," in str(target_index_name):
+        symbols = [s.strip().upper() for s in str(target_index_name).split(",") if s.strip()]
+    else:
+        symbols = INDICES_REGISTRY_MAP.get(target_index_name)
     if not symbols:
         symbols = sorted(list(STOCK_REGISTRY.keys()))
 

@@ -65,18 +65,21 @@ def _sync_tab_databases(db, db_dir=None):
         pass
 
 def _write(db):
-    db_path = _get_db_path()
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    tmp = db_path + ".tmp"
-    for _ in range(3):
+    mirror_paths = [
+        os.path.join(BASE_DIR, "output", "monitor", "trades_db.json"),
+        os.path.join(BASE_DIR, "Trade_Option", "output", "monitor", "trades_db.json"),
+        os.path.join(BASE_DIR, "Trade_Stock", "output", "monitor", "trades_db.json"),
+    ]
+    for db_path in mirror_paths:
         try:
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+            tmp = db_path + ".tmp"
             with open(tmp, "w", encoding="utf-8") as f:
                 json.dump(db, f, indent=2)
             os.replace(tmp, db_path)
             _sync_tab_databases(db, db_dir=os.path.dirname(db_path))
-            return
-        except:
-            time.sleep(0.05)
+        except Exception:
+            pass
 
 def create_trade(engine, symbol, data):
     db = _read()

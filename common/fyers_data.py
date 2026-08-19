@@ -52,6 +52,22 @@ _last_call_time = 0.0
 _rate_limit_cooldown_until = 0.0
 _candle_cache = {}
 _option_chain_cache = {}
+_last_prune_time = 0.0
+
+def _prune_caches():
+    global _last_prune_time
+    now = time.time()
+    if now - _last_prune_time < 60 and len(_candle_cache) < 300 and len(_option_chain_cache) < 300:
+        return
+    _last_prune_time = now
+    # Prune candle cache older than 60s
+    expired_candles = [k for k, v in _candle_cache.items() if (now - v.get("ts", 0)) > 60]
+    for k in expired_candles:
+        _candle_cache.pop(k, None)
+    # Prune option chain cache older than 120s
+    expired_chains = [k for k, v in _option_chain_cache.items() if (now - v.get("ts", 0)) > 120]
+    for k in expired_chains:
+        _option_chain_cache.pop(k, None)
 
 IST_TZ = timezone(timedelta(hours=5, minutes=30))
 
@@ -156,6 +172,7 @@ def fetch_fyers_candles(symbol, timeframe="15minute", lookback_days=30, retries=
     fyers_symbol = format_fyers_symbol(symbol)
     resolution = TIMEFRAME_MAP.get(str(timeframe).lower(), "15")
 
+    _prune_caches()
     cache_key = f"{fyers_symbol}:{resolution}:{lookback_days}"
     cached = _candle_cache.get(cache_key)
     if cached and (time.time() - cached["ts"]) < 15:
@@ -218,6 +235,7 @@ def fetch_fyers_option_chain(underlying_symbol, strikecount=3, retries=4):
         return []
 
     fyers_symbol = format_fyers_equity_symbol(underlying_symbol)
+    _prune_caches()
     cache_key = f"{fyers_symbol}:{strikecount}"
     cached = _option_chain_cache.get(cache_key)
     if cached and (time.time() - cached["ts"]) < 30:
