@@ -1,0 +1,1052 @@
+{
+    "360ONE": {
+        "token": 13061,
+        "lot_size": 500,
+        "strike_step": 20
+    },
+    "ABB": {
+        "token": 13,
+        "lot_size": 125,
+        "strike_step": 100
+    },
+    "ABCAPITAL": {
+        "token": 21614,
+        "lot_size": 3100,
+        "strike_step": 5
+    },
+    "ADANIENSOL": {
+        "token": 10217,
+        "lot_size": 675,
+        "strike_step": 20
+    },
+    "ADANIENT": {
+        "token": 25,
+        "lot_size": 309,
+        "strike_step": 10
+    },
+    "ADANIGREEN": {
+        "token": 3563,
+        "lot_size": 600,
+        "strike_step": 20
+    },
+    "ADANIPORTS": {
+        "token": 15083,
+        "lot_size": 475,
+        "strike_step": 20
+    },
+    "ADANIPOWER": {
+        "token": 17388,
+        "lot_size": 3550,
+        "strike_step": 5
+    },
+    "ALKEM": {
+        "token": 11703,
+        "lot_size": 125,
+        "strike_step": 50
+    },
+    "AMBER": {
+        "token": 1185,
+        "lot_size": 100,
+        "strike_step": 100
+    },
+    "AMBUJACEM": {
+        "token": 1270,
+        "lot_size": 1200,
+        "strike_step": 5
+    },
+    "ANGELONE": {
+        "token": 324,
+        "lot_size": 2500,
+        "strike_step": 5
+    },
+    "APLAPOLLO": {
+        "token": 25780,
+        "lot_size": 350,
+        "strike_step": 20
+    },
+    "APOLLOHOSP": {
+        "token": 157,
+        "lot_size": 125,
+        "strike_step": 100
+    },
+    "ASHOKLEY": {
+        "token": 212,
+        "lot_size": 5000,
+        "strike_step": 5
+    },
+    "ASIANPAINT": {
+        "token": 236,
+        "lot_size": 250,
+        "strike_step": 20
+    },
+    "ASTRAL": {
+        "token": 14418,
+        "lot_size": 425,
+        "strike_step": 20
+    },
+    "AUBANK": {
+        "token": 21238,
+        "lot_size": 1000,
+        "strike_step": 20
+    },
+    "AUROPHARMA": {
+        "token": 275,
+        "lot_size": 550,
+        "strike_step": 20
+    },
+    "AXISBANK": {
+        "token": 5900,
+        "lot_size": 625,
+        "strike_step": 20
+    },
+    "BAJAJ-AUTO": {
+        "token": 16669,
+        "lot_size": 75,
+        "strike_step": 100
+    },
+    "BAJAJFINSV": {
+        "token": 16675,
+        "lot_size": 300,
+        "strike_step": 20
+    },
+    "BAJAJHLDNG": {
+        "token": 305,
+        "lot_size": 75,
+        "strike_step": 100
+    },
+    "BAJFINANCE": {
+        "token": 317,
+        "lot_size": 750,
+        "strike_step": 10
+    },
+    "BANDHANBNK": {
+        "token": 2263,
+        "lot_size": 3600,
+        "strike_step": 5
+    },
+    "BANKBARODA": {
+        "token": 4668,
+        "lot_size": 2925,
+        "strike_step": 5
+    },
+    "BANKINDIA": {
+        "token": 4745,
+        "lot_size": 5200,
+        "strike_step": 5
+    },
+    "BDL": {
+        "token": 2144,
+        "lot_size": 425,
+        "strike_step": 20
+    },
+    "BEL": {
+        "token": 383,
+        "lot_size": 1425,
+        "strike_step": 5
+    },
+    "BHARATFORG": {
+        "token": 422,
+        "lot_size": 500,
+        "strike_step": 20
+    },
+    "BHARTIARTL": {
+        "token": 10604,
+        "lot_size": 475,
+        "strike_step": 20
+    },
+    "BHEL": {
+        "token": 438,
+        "lot_size": 2625,
+        "strike_step": 5
+    },
+    "BIOCON": {
+        "token": 11373,
+        "lot_size": 2500,
+        "strike_step": 5
+    },
+    "BLUESTARCO": {
+        "token": 8311,
+        "lot_size": 325,
+        "strike_step": 20
+    },
+    "BOSCHLTD": {
+        "token": 2181,
+        "lot_size": 25,
+        "strike_step": 500
+    },
+    "BPCL": {
+        "token": 526,
+        "lot_size": 1975,
+        "strike_step": 5
+    },
+    "BRITANNIA": {
+        "token": 547,
+        "lot_size": 125,
+        "strike_step": 50
+    },
+    "BSE": {
+        "token": 19585,
+        "lot_size": 200,
+        "strike_step": 100
+    },
+    "CAMS": {
+        "token": 342,
+        "lot_size": 825,
+        "strike_step": 10
+    },
+    "CANBK": {
+        "token": 10794,
+        "lot_size": 6750,
+        "strike_step": 2
+    },
+    "CDSL": {
+        "token": 21174,
+        "lot_size": 475,
+        "strike_step": 20
+    },
+    "CGPOWER": {
+        "token": 760,
+        "lot_size": 850,
+        "strike_step": 20
+    },
+    "CHOLAFIN": {
+        "token": 685,
+        "lot_size": 625,
+        "strike_step": 20
+    },
+    "CIPLA": {
+        "token": 694,
+        "lot_size": 425,
+        "strike_step": 10
+    },
+    "COALINDIA": {
+        "token": 20374,
+        "lot_size": 1350,
+        "strike_step": 5
+    },
+    "COCHINSHIP": {
+        "token": 21508,
+        "lot_size": 400,
+        "strike_step": 20
+    },
+    "COFORGE": {
+        "token": 11543,
+        "lot_size": 475,
+        "strike_step": 20
+    },
+    "COLPAL": {
+        "token": 15141,
+        "lot_size": 275,
+        "strike_step": 20
+    },
+    "CONCOR": {
+        "token": 4749,
+        "lot_size": 1250,
+        "strike_step": 5
+    },
+    "CROMPTON": {
+        "token": 17094,
+        "lot_size": 2150,
+        "strike_step": 5
+    },
+    "CUMMINSIND": {
+        "token": 1901,
+        "lot_size": 200,
+        "strike_step": 100
+    },
+    "DABUR": {
+        "token": 772,
+        "lot_size": 1250,
+        "strike_step": 5
+    },
+    "DALBHARAT": {
+        "token": 8075,
+        "lot_size": 325,
+        "strike_step": 20
+    },
+    "DELHIVERY": {
+        "token": 9599,
+        "lot_size": 2075,
+        "strike_step": 5
+    },
+    "DIVISLAB": {
+        "token": 10940,
+        "lot_size": 100,
+        "strike_step": 100
+    },
+    "DIXON": {
+        "token": 21690,
+        "lot_size": 50,
+        "strike_step": 50
+    },
+    "DLF": {
+        "token": 14732,
+        "lot_size": 950,
+        "strike_step": 10
+    },
+    "DMART": {
+        "token": 19913,
+        "lot_size": 150,
+        "strike_step": 50
+    },
+    "DRREDDY": {
+        "token": 881,
+        "lot_size": 625,
+        "strike_step": 10
+    },
+    "EICHERMOT": {
+        "token": 910,
+        "lot_size": 100,
+        "strike_step": 100
+    },
+    "ETERNAL": {
+        "token": 5097,
+        "lot_size": 2425,
+        "strike_step": 5
+    },
+    "FEDERALBNK": {
+        "token": 1023,
+        "lot_size": 2500,
+        "strike_step": 5
+    },
+    "FORCEMOT": {
+        "token": 11573,
+        "lot_size": 25,
+        "strike_step": 500
+    },
+    "FORTIS": {
+        "token": 14592,
+        "lot_size": 775,
+        "strike_step": 10
+    },
+    "GAIL": {
+        "token": 4717,
+        "lot_size": 3550,
+        "strike_step": 5
+    },
+    "GLENMARK": {
+        "token": 7406,
+        "lot_size": 375,
+        "strike_step": 20
+    },
+    "GMRAIRPORT": {
+        "token": 13528,
+        "lot_size": 6975,
+        "strike_step": 1
+    },
+    "GODFRYPHLP": {
+        "token": 1181,
+        "lot_size": 275,
+        "strike_step": 50
+    },
+    "GODREJCP": {
+        "token": 10099,
+        "lot_size": 500,
+        "strike_step": 10
+    },
+    "GODREJPROP": {
+        "token": 17875,
+        "lot_size": 325,
+        "strike_step": 20
+    },
+    "GRASIM": {
+        "token": 1232,
+        "lot_size": 250,
+        "strike_step": 20
+    },
+    "GVT&D": {
+        "token": 16783,
+        "lot_size": 125,
+        "strike_step": 100
+    },
+    "HAL": {
+        "token": 2303,
+        "lot_size": 150,
+        "strike_step": 50
+    },
+    "HAVELLS": {
+        "token": 9819,
+        "lot_size": 500,
+        "strike_step": 20
+    },
+    "HCLTECH": {
+        "token": 7229,
+        "lot_size": 400,
+        "strike_step": 10
+    },
+    "HDFCAMC": {
+        "token": 4244,
+        "lot_size": 300,
+        "strike_step": 50
+    },
+    "HDFCBANK": {
+        "token": 1333,
+        "lot_size": 650,
+        "strike_step": 10
+    },
+    "HDFCLIFE": {
+        "token": 467,
+        "lot_size": 1100,
+        "strike_step": 5
+    },
+    "HEROMOTOCO": {
+        "token": 1348,
+        "lot_size": 150,
+        "strike_step": 100
+    },
+    "HINDALCO": {
+        "token": 1363,
+        "lot_size": 700,
+        "strike_step": 20
+    },
+    "HINDPETRO": {
+        "token": 1406,
+        "lot_size": 2025,
+        "strike_step": 10
+    },
+    "HINDUNILVR": {
+        "token": 1394,
+        "lot_size": 300,
+        "strike_step": 20
+    },
+    "HINDZINC": {
+        "token": 1424,
+        "lot_size": 1225,
+        "strike_step": 10
+    },
+    "HYUNDAI": {
+        "token": 25844,
+        "lot_size": 275,
+        "strike_step": 20
+    },
+    "ICICIBANK": {
+        "token": 4963,
+        "lot_size": 700,
+        "strike_step": 10
+    },
+    "ICICIGI": {
+        "token": 21770,
+        "lot_size": 325,
+        "strike_step": 20
+    },
+    "ICICIPRULI": {
+        "token": 18652,
+        "lot_size": 925,
+        "strike_step": 5
+    },
+    "IDEA": {
+        "token": 14366,
+        "lot_size": 71475,
+        "strike_step": 1
+    },
+    "IDFCFIRSTB": {
+        "token": 11184,
+        "lot_size": 9275,
+        "strike_step": 1
+    },
+    "IEX": {
+        "token": 220,
+        "lot_size": 4350,
+        "strike_step": 1
+    },
+    "INDHOTEL": {
+        "token": 1512,
+        "lot_size": 1000,
+        "strike_step": 10
+    },
+    "INDIANB": {
+        "token": 14309,
+        "lot_size": 1000,
+        "strike_step": 10
+    },
+    "INDIGO": {
+        "token": 11195,
+        "lot_size": 150,
+        "strike_step": 100
+    },
+    "INDUSINDBK": {
+        "token": 5258,
+        "lot_size": 700,
+        "strike_step": 10
+    },
+    "INDUSTOWER": {
+        "token": 29135,
+        "lot_size": 1700,
+        "strike_step": 1
+    },
+    "INFY": {
+        "token": 1594,
+        "lot_size": 400,
+        "strike_step": 5
+    },
+    "INOXWIND": {
+        "token": 7852,
+        "lot_size": 6400,
+        "strike_step": 2
+    },
+    "IOC": {
+        "token": 1624,
+        "lot_size": 4875,
+        "strike_step": 1
+    },
+    "IREDA": {
+        "token": 20261,
+        "lot_size": 4525,
+        "strike_step": 1
+    },
+    "IRFC": {
+        "token": 2029,
+        "lot_size": 5425,
+        "strike_step": 1
+    },
+    "ITC": {
+        "token": 1660,
+        "lot_size": 1725,
+        "strike_step": 5
+    },
+    "JINDALSTEL": {
+        "token": 6733,
+        "lot_size": 625,
+        "strike_step": 20
+    },
+    "JIOFIN": {
+        "token": 18143,
+        "lot_size": 2350,
+        "strike_step": 5
+    },
+    "JSWENERGY": {
+        "token": 17869,
+        "lot_size": 1075,
+        "strike_step": 10
+    },
+    "JSWSTEEL": {
+        "token": 11723,
+        "lot_size": 675,
+        "strike_step": 20
+    },
+    "JUBLFOOD": {
+        "token": 18096,
+        "lot_size": 1250,
+        "strike_step": 5
+    },
+    "KALYANKJIL": {
+        "token": 2955,
+        "lot_size": 1350,
+        "strike_step": 5
+    },
+    "KAYNES": {
+        "token": 12092,
+        "lot_size": 150,
+        "strike_step": 50
+    },
+    "KEI": {
+        "token": 13310,
+        "lot_size": 175,
+        "strike_step": 100
+    },
+    "KFINTECH": {
+        "token": 13359,
+        "lot_size": 575,
+        "strike_step": 20
+    },
+    "KOTAKBANK": {
+        "token": 1922,
+        "lot_size": 2000,
+        "strike_step": 5
+    },
+    "KPITTECH": {
+        "token": 9683,
+        "lot_size": 775,
+        "strike_step": 10
+    },
+    "LAURUSLABS": {
+        "token": 19234,
+        "lot_size": 850,
+        "strike_step": 20
+    },
+    "LICHSGFIN": {
+        "token": 1997,
+        "lot_size": 1000,
+        "strike_step": 10
+    },
+    "LICI": {
+        "token": 9480,
+        "lot_size": 1400,
+        "strike_step": 5
+    },
+    "LODHA": {
+        "token": 3220,
+        "lot_size": 625,
+        "strike_step": 20
+    },
+    "LT": {
+        "token": 11483,
+        "lot_size": 175,
+        "strike_step": 10
+    },
+    "LTF": {
+        "token": 24948,
+        "lot_size": 2250,
+        "strike_step": 5
+    },
+    "LTM": {
+        "token": 17818,
+        "lot_size": 150,
+        "strike_step": 50
+    },
+    "LUPIN": {
+        "token": 10440,
+        "lot_size": 425,
+        "strike_step": 20
+    },
+    "M&M": {
+        "token": 2031,
+        "lot_size": 200,
+        "strike_step": 10
+    },
+    "MANAPPURAM": {
+        "token": 19061,
+        "lot_size": 3000,
+        "strike_step": 5
+    },
+    "MANKIND": {
+        "token": 15380,
+        "lot_size": 250,
+        "strike_step": 20
+    },
+    "MARICO": {
+        "token": 4067,
+        "lot_size": 1200,
+        "strike_step": 10
+    },
+    "MARUTI": {
+        "token": 10999,
+        "lot_size": 50,
+        "strike_step": 100
+    },
+    "MAXHEALTH": {
+        "token": 22377,
+        "lot_size": 525,
+        "strike_step": 10
+    },
+    "MAZDOCK": {
+        "token": 509,
+        "lot_size": 225,
+        "strike_step": 50
+    },
+    "MCX": {
+        "token": 31181,
+        "lot_size": 225,
+        "strike_step": 50
+    },
+    "MFSL": {
+        "token": 2142,
+        "lot_size": 400,
+        "strike_step": 20
+    },
+    "MOTHERSON": {
+        "token": 4204,
+        "lot_size": 6150,
+        "strike_step": 2
+    },
+    "MOTILALOFS": {
+        "token": 14947,
+        "lot_size": 775,
+        "strike_step": 20
+    },
+    "MPHASIS": {
+        "token": 4503,
+        "lot_size": 275,
+        "strike_step": 12
+    },
+    "MUTHOOTFIN": {
+        "token": 23650,
+        "lot_size": 275,
+        "strike_step": 50
+    },
+    "NAM-INDIA": {
+        "token": 357,
+        "lot_size": 625,
+        "strike_step": 20
+    },
+    "NATIONALUM": {
+        "token": 6364,
+        "lot_size": 1875,
+        "strike_step": 10
+    },
+    "NAUKRI": {
+        "token": 13751,
+        "lot_size": 550,
+        "strike_step": 20
+    },
+    "NBCC": {
+        "token": 31415,
+        "lot_size": 6500,
+        "strike_step": 5
+    },
+    "NESTLEIND": {
+        "token": 17963,
+        "lot_size": 500,
+        "strike_step": 10
+    },
+    "NHPC": {
+        "token": 17400,
+        "lot_size": 6950,
+        "strike_step": 1
+    },
+    "NIFTYFPI": {
+        "token": 26137,
+        "lot_size": 1100,
+        "strike_step": 5
+    },
+    "NMDC": {
+        "token": 15332,
+        "lot_size": 6750,
+        "strike_step": 1
+    },
+    "NTPC": {
+        "token": 11630,
+        "lot_size": 1500,
+        "strike_step": 5
+    },
+    "NYKAA": {
+        "token": 6545,
+        "lot_size": 3125,
+        "strike_step": 5
+    },
+    "OBEROIRLTY": {
+        "token": 20242,
+        "lot_size": 350,
+        "strike_step": 20
+    },
+    "OFSS": {
+        "token": 10738,
+        "lot_size": 100,
+        "strike_step": 100
+    },
+    "OIL": {
+        "token": 17438,
+        "lot_size": 1400,
+        "strike_step": 5
+    },
+    "ONGC": {
+        "token": 2475,
+        "lot_size": 2250,
+        "strike_step": 5
+    },
+    "PAGEIND": {
+        "token": 14413,
+        "lot_size": 20,
+        "strike_step": 500
+    },
+    "PATANJALI": {
+        "token": 17029,
+        "lot_size": 1075,
+        "strike_step": 5
+    },
+    "PAYTM": {
+        "token": 6705,
+        "lot_size": 725,
+        "strike_step": 20
+    },
+    "PERSISTENT": {
+        "token": 18365,
+        "lot_size": 125,
+        "strike_step": 100
+    },
+    "PETRONET": {
+        "token": 11351,
+        "lot_size": 1900,
+        "strike_step": 5
+    },
+    "PFC": {
+        "token": 14299,
+        "lot_size": 1300,
+        "strike_step": 5
+    },
+    "PGEL": {
+        "token": 25358,
+        "lot_size": 950,
+        "strike_step": 10
+    },
+    "PHOENIXLTD": {
+        "token": 14552,
+        "lot_size": 350,
+        "strike_step": 20
+    },
+    "PIDILITIND": {
+        "token": 2664,
+        "lot_size": 500,
+        "strike_step": 20
+    },
+    "PIIND": {
+        "token": 24184,
+        "lot_size": 175,
+        "strike_step": 10
+    },
+    "PNB": {
+        "token": 10666,
+        "lot_size": 8000,
+        "strike_step": 1
+    },
+    "PNBHOUSING": {
+        "token": 18908,
+        "lot_size": 650,
+        "strike_step": 20
+    },
+    "POLICYBZR": {
+        "token": 6656,
+        "lot_size": 350,
+        "strike_step": 20
+    },
+    "POLYCAB": {
+        "token": 9590,
+        "lot_size": 125,
+        "strike_step": 100
+    },
+    "POWERGRID": {
+        "token": 14977,
+        "lot_size": 1900,
+        "strike_step": 5
+    },
+    "POWERINDIA": {
+        "token": 18457,
+        "lot_size": 25,
+        "strike_step": 500
+    },
+    "PREMIERENE": {
+        "token": 25049,
+        "lot_size": 650,
+        "strike_step": 20
+    },
+    "PRESTIGE": {
+        "token": 20302,
+        "lot_size": 450,
+        "strike_step": 20
+    },
+    "RADICO": {
+        "token": 10990,
+        "lot_size": 150,
+        "strike_step": 50
+    },
+    "RBLBANK": {
+        "token": 18391,
+        "lot_size": 3175,
+        "strike_step": 5
+    },
+    "RECLTD": {
+        "token": 15355,
+        "lot_size": 1575,
+        "strike_step": 5
+    },
+    "RELIANCE": {
+        "token": 2885,
+        "lot_size": 500,
+        "strike_step": 10
+    },
+    "RVNL": {
+        "token": 9552,
+        "lot_size": 1925,
+        "strike_step": 5
+    },
+    "SAIL": {
+        "token": 2963,
+        "lot_size": 4700,
+        "strike_step": 5
+    },
+    "SBICARD": {
+        "token": 17971,
+        "lot_size": 800,
+        "strike_step": 10
+    },
+    "SBILIFE": {
+        "token": 21808,
+        "lot_size": 375,
+        "strike_step": 20
+    },
+    "SBIN": {
+        "token": 3045,
+        "lot_size": 750,
+        "strike_step": 10
+    },
+    "SHREECEM": {
+        "token": 3103,
+        "lot_size": 25,
+        "strike_step": 250
+    },
+    "SHRIRAMFIN": {
+        "token": 4306,
+        "lot_size": 825,
+        "strike_step": 20
+    },
+    "SIEMENS": {
+        "token": 3150,
+        "lot_size": 175,
+        "strike_step": 50
+    },
+    "SOLARINDS": {
+        "token": 13332,
+        "lot_size": 50,
+        "strike_step": 250
+    },
+    "SONACOMS": {
+        "token": 4684,
+        "lot_size": 1225,
+        "strike_step": 10
+    },
+    "SRF": {
+        "token": 3273,
+        "lot_size": 200,
+        "strike_step": 20
+    },
+    "SUNPHARMA": {
+        "token": 3351,
+        "lot_size": 350,
+        "strike_step": 20
+    },
+    "SUPREMEIND": {
+        "token": 3363,
+        "lot_size": 175,
+        "strike_step": 50
+    },
+    "SUZLON": {
+        "token": 12018,
+        "lot_size": 12700,
+        "strike_step": 1
+    },
+    "SWIGGY": {
+        "token": 27066,
+        "lot_size": 1825,
+        "strike_step": 5
+    },
+    "TATACONSUM": {
+        "token": 3432,
+        "lot_size": 550,
+        "strike_step": 10
+    },
+    "TATAELXSI": {
+        "token": 3411,
+        "lot_size": 125,
+        "strike_step": 50
+    },
+    "TATAPOWER": {
+        "token": 3426,
+        "lot_size": 1450,
+        "strike_step": 5
+    },
+    "TATASTEEL": {
+        "token": 3499,
+        "lot_size": 2750,
+        "strike_step": 5
+    },
+    "TCS": {
+        "token": 11536,
+        "lot_size": 225,
+        "strike_step": 20
+    },
+    "TECHM": {
+        "token": 13538,
+        "lot_size": 600,
+        "strike_step": 4
+    },
+    "TIINDIA": {
+        "token": 312,
+        "lot_size": 200,
+        "strike_step": 50
+    },
+    "TITAN": {
+        "token": 3506,
+        "lot_size": 175,
+        "strike_step": 50
+    },
+    "TMPV": {
+        "token": 3456,
+        "lot_size": 1600,
+        "strike_step": 5
+    },
+    "TORNTPHARM": {
+        "token": 3518,
+        "lot_size": 125,
+        "strike_step": 50
+    },
+    "TRENT": {
+        "token": 1964,
+        "lot_size": 225,
+        "strike_step": 10
+    },
+    "TVSMOTOR": {
+        "token": 8479,
+        "lot_size": 175,
+        "strike_step": 10
+    },
+    "ULTRACEMCO": {
+        "token": 11532,
+        "lot_size": 50,
+        "strike_step": 40
+    },
+    "UNIONBANK": {
+        "token": 10753,
+        "lot_size": 4425,
+        "strike_step": 5
+    },
+    "UNITDSPR": {
+        "token": 10447,
+        "lot_size": 400,
+        "strike_step": 20
+    },
+    "UNOMINDA": {
+        "token": 14154,
+        "lot_size": 550,
+        "strike_step": 20
+    },
+    "UPL": {
+        "token": 11287,
+        "lot_size": 1355,
+        "strike_step": 10
+    },
+    "VBL": {
+        "token": 18921,
+        "lot_size": 1275,
+        "strike_step": 10
+    },
+    "VEDL": {
+        "token": 3063,
+        "lot_size": 1150,
+        "strike_step": 5
+    },
+    "VMM": {
+        "token": 27969,
+        "lot_size": 4850,
+        "strike_step": 5
+    },
+    "VOLTAS": {
+        "token": 3718,
+        "lot_size": 375,
+        "strike_step": 20
+    },
+    "WAAREEENER": {
+        "token": 25907,
+        "lot_size": 175,
+        "strike_step": 50
+    },
+    "WIPRO": {
+        "token": 3787,
+        "lot_size": 3000,
+        "strike_step": 5
+    },
+    "YESBANK": {
+        "token": 11915,
+        "lot_size": 31100,
+        "strike_step": 1
+    },
+    "ZYDUSLIFE": {
+        "token": 7929,
+        "lot_size": 900,
+        "strike_step": 10
+    },
+    "TATAMOTORS": {
+        "token": 3456,
+        "lot_size": 1600,
+        "strike_step": 5
+    }
+}

@@ -53,6 +53,7 @@ from trading_core import (
     find_newest_valid_anchor,
     detect_parabolic_multi_swings,
     is_anchor_after_terminal_base,
+    clean_liquid_candles,
     STOCK_REGISTRY,
     SUPER_STOCKS
 )
@@ -274,6 +275,12 @@ def _process_fyers_stock_option_strike(opt, sym, cfg):
         df_entry = fetch_fyers_candles(opt_sym, TIMEFRAME_ENTRY, lookback_days=min(LOOKBACK_DAYS, 5))
         df_anchor = fetch_fyers_candles(opt_sym, TIMEFRAME_ANCHOR, lookback_days=min(LOOKBACK_DAYS, 5))
         if df_entry is None or df_anchor is None or len(df_entry) < 20:
+            return None
+
+        # Clean illiquid / zero-volume phantom bars
+        df_entry = clean_liquid_candles(df_entry)
+        df_anchor = clean_liquid_candles(df_anchor)
+        if len(df_entry) < 15 or len(df_anchor) < 15:
             return None
 
         # Phase 0: Parabolic Multi-Swing Curve on Anchor Timeframe

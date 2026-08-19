@@ -64,8 +64,8 @@ PROGRAMS = {
             "target_index": {
                 "label": "Target Index Universe",
                 "type": "select",
-                "options": ["NIFTY50", "NIFTY_NEXT_100", "NIFTY_MIDCAP_100", "NIFTY_SMALLCAP_250"],
-                "default": "NIFTY50"
+                "options": ["ALL_FNO", "NIFTY50", "NIFTY_NEXT_100", "NIFTY_MIDCAP_100", "NIFTY_SMALLCAP_250"],
+                "default": "ALL_FNO"
             },
             "timeframe": {
                 "label": "Timeframe",
@@ -98,8 +98,8 @@ PROGRAMS = {
             "target_index": {
                 "label": "Target Index Universe",
                 "type": "select",
-                "options": ["NIFTY50", "NIFTY_NEXT_100", "NIFTY_MIDCAP_100", "NIFTY_SMALLCAP_250"],
-                "default": "NIFTY50"
+                "options": ["ALL_FNO", "NIFTY50", "NIFTY_NEXT_100", "NIFTY_MIDCAP_100", "NIFTY_SMALLCAP_250"],
+                "default": "ALL_FNO"
             },
             "timeframe": {
                 "label": "Timeframe",

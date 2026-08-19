@@ -3,7 +3,7 @@
   "api_secret": "9g7d5kktr38d7yvq11njsm4upz8kc6s1",
   "daily": {
     "product_type": "CNC",
-    "target_index": "NIFTY50",
+    "target_index": "ALL_FNO",
     "timeframe": "day",
     "lookback_days": 2000,
     "enable_swingfilter": true,
@@ -12,7 +12,7 @@
   },
   "bear_trade": {
     "product_type": "CNC",
-    "target_index": "NIFTY50",
+    "target_index": "ALL_FNO",
     "timeframe": "day",
     "lookback_days": 2000,
     "enable_swingfilter": true,

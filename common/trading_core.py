@@ -236,6 +236,17 @@ STOCK_REGISTRY = {
     "WIPRO": {"token": 969473, "lot_size": 1500, "strike_step": 5}
 }
 
+# Auto-expand STOCK_REGISTRY with full NSE F&O universe (210 stocks)
+_fno_reg_file = os.path.join(os.path.dirname(__file__), "fno_stock_registry.json")
+if os.path.exists(_fno_reg_file):
+    try:
+        with open(_fno_reg_file, "r") as _fno_fh:
+            _loaded_reg = json.load(_fno_fh)
+            if _loaded_reg and isinstance(_loaded_reg, dict):
+                STOCK_REGISTRY.update(_loaded_reg)
+    except Exception:
+        pass
+
 def sync_stock_tokens(kite):
     try:
         instruments = kite.instruments("NSE")
