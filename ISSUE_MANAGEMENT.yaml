@@ -8,6 +8,34 @@ meta:
   purpose: Document operational failures, root causes, regression fixes, and system enhancements.
 
 issues:
+  - id: FEAT-076
+    title: Index Spot Directional Trade Engine & Multi-Symbol Option Alias Resolution
+    severity: HIGH
+    category: Engine / Spot Integration / Derivatives Mapping
+    family: ENGINE_CORE
+    date_reported: "2026-08-19"
+    symptom: |
+      1. Need for a dedicated engine scanning underlying Index Spot price action (NIFTY, BANKNIFTY, NIFTYIT, SENSEX, FINNIFTY, MIDCPNIFTY) with Stage 0 parabolic filter and auto-resolving directional ATM CE/PE option contracts.
+      2. TATAMOTORS option chain and contract resolution failed due to NSE passenger vehicle demerger (TMPV ticker).
+      3. Index Spot live logs were missing from the UI log streaming aggregator.
+    root_cause: |
+      1. Only contract-based index scanning existed previously.
+      2. NSE/Fyers renamed Tata Motors F&O contracts to TMPV, while stock universes used TATAMOTORS.
+      3. Frontend log array omitted index_spot program ID.
+    affected_files:
+      - Trade_Option/index_spot_trade_engine.py
+      - Trade_Option/app_option_Trade.py
+      - Trade_Option/stock_options_trade_engine.py
+      - common/trading_core.py
+      - common/fyers_data.py
+      - common/trade_db.py
+    resolution: |
+      1. Implemented Trade_Option/index_spot_trade_engine.py with dual-directional Stage 0 + Stage 1/2 breakout detection, delta projection (0.50), and multi-tier position sizing.
+      2. Added bidirectional alias mapping (TATAMOTORS <-> TMPV, M&M <-> M_M) in fyers_data.py, trading_core.py, and stock_options_trade_engine.py.
+      3. Added store_cycle_trades() batch helper to trade_db.py.
+      4. Wired index_spot into app_option_Trade.py (Program Card, live log stream, filter dropdowns, and export).
+    status: RESOLVED
+
   - id: BUGFIX-075
     title: Fyers Option Chain 429 Rate Limit Burst Exhaustion Fix
     severity: HIGH
