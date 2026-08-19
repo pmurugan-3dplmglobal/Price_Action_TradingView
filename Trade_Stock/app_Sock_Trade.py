@@ -1594,7 +1594,11 @@ HTML_TEMPLATE = """
             try {
                 const r = await fetch('/api/logs/clear', {method: 'POST'});
                 const d = await r.json();
-                if (d.ok) setTimeout(refreshData, 300);
+                if (d.ok) {
+                    const lb = document.getElementById('log-body');
+                    if (lb) lb.innerHTML = '<p class="empty-state">Logs cleared</p>';
+                    setTimeout(refreshData, 300);
+                }
             } catch(e) { console.log(e); }
         }
 
@@ -2687,7 +2691,31 @@ def api_anchor_status():
 
 @app.route("/api/logs/clear", methods=["POST"])
 def api_logs_clear():
-    log_files = [INDEX_LOG_FILE, NIFTY50_LOG_FILE, DAILY_LOG_FILE]
+    global _file_read_cache
+    _file_read_cache.clear()
+    with data_lock:
+        for pid in PROGRAMS:
+            cached_data["log_tail"][pid] = []
+            cached_data["scans"][pid] = []
+            cached_data["scan_summary"][pid] = {"anchors": {}, "abc_matches": {}}
+
+    log_files = set()
+    for pid, pinfo in PROGRAMS.items():
+        lf = pinfo.get("log_file")
+        if lf:
+            log_files.add(lf)
+            best_f = get_best_log_file(lf)
+            if best_f:
+                log_files.add(best_f)
+    
+    # Explicit known log files
+    for lf_cand in [DAILY_LOG_FILE, BEAR_LOG_FILE]:
+        if lf_cand:
+            log_files.add(lf_cand)
+            best_f = get_best_log_file(lf_cand)
+            if best_f:
+                log_files.add(best_f)
+
     for lf in log_files:
         try:
             if os.path.exists(lf):
