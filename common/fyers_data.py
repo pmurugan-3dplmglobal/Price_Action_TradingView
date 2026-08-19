@@ -12,11 +12,23 @@ except ImportError:
 
 INDEX_SYMBOL_MAP = {
     "NIFTY": "NSE:NIFTY50-INDEX",
+    "NIFTY50": "NSE:NIFTY50-INDEX",
+    "NSE:NIFTY": "NSE:NIFTY50-INDEX",
+    "NSE:NIFTY-INDEX": "NSE:NIFTY50-INDEX",
+    "NSE:NIFTY50": "NSE:NIFTY50-INDEX",
     "BANKNIFTY": "NSE:NIFTYBANK-INDEX",
+    "NIFTYBANK": "NSE:NIFTYBANK-INDEX",
+    "NSE:BANKNIFTY": "NSE:NIFTYBANK-INDEX",
+    "NSE:BANKNIFTY-INDEX": "NSE:NIFTYBANK-INDEX",
+    "NSE:NIFTYBANK": "NSE:NIFTYBANK-INDEX",
     "SENSEX": "BSE:SENSEX-INDEX",
+    "BSE:SENSEX": "BSE:SENSEX-INDEX",
     "FINNIFTY": "NSE:FINNIFTY-INDEX",
+    "NSE:FINNIFTY": "NSE:FINNIFTY-INDEX",
     "MIDCPNIFTY": "NSE:MIDCPNIFTY-INDEX",
+    "NSE:MIDCPNIFTY": "NSE:MIDCPNIFTY-INDEX",
     "NIFTYIT": "NSE:NIFTYIT-INDEX",
+    "NSE:NIFTYIT": "NSE:NIFTYIT-INDEX",
     "IT": "NSE:NIFTYIT-INDEX",
 }
 
@@ -98,6 +110,12 @@ def format_fyers_equity_symbol(raw_symbol):
     Option contract symbols (containing digits like NIFTY2681824200CE) pass through as-is.
     Handles special equity names like BAJAJ-AUTO, M&M, and TATAMOTORS -> TMPV correctly."""
     s = str(raw_symbol).strip().upper()
+    if s in INDEX_SYMBOL_MAP:
+        return INDEX_SYMBOL_MAP[s]
+    if ":" in s:
+        parts = s.split(":", 1)
+        if parts[1] in INDEX_SYMBOL_MAP:
+            return INDEX_SYMBOL_MAP[parts[1]]
     if s in EQUITY_ALIAS_MAP:
         s = EQUITY_ALIAS_MAP[s]
     if ":" in s:

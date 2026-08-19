@@ -68,6 +68,7 @@ from trading_core import (
 
 LIVE_MARKET_DEPLOYMENT = True
 ENABLE_SWINGFILTER = True
+MIN_CASCADING_WAVES = 2
 LOOKBACK_DAYS = 30
 INITIAL_CAPITAL = 100000.0
 MAX_RISK_PERCENT = 2.0
@@ -163,21 +164,25 @@ def _process_spot_symbol(sym, cfg):
         bull_match = None
         bull_swing = {}
         if ENABLE_SWINGFILTER:
-            bull_swing = detect_parabolic_multi_swings(df_anchor.tail(80), side="BULL", min_swings=3, max_bars_since_base=18)
+            bull_swing = detect_parabolic_multi_swings(df_anchor.tail(80), side="BULL", min_swings=MIN_CASCADING_WAVES, max_bars_since_base=50)
             if bull_swing.get("matched", False):
                 m = scan_anchor_bcd_breakout(df_entry.tail(150), df_anchor.tail(80))
                 if m and is_anchor_after_terminal_base(df_anchor, m.get("CandleATime", m.get("CandleTime")), bull_swing):
                     bull_match = m
+        else:
+            bull_match = scan_anchor_bcd_breakout(df_entry.tail(150), df_anchor.tail(80))
 
         # Evaluate BEAR Setup on Spot (triggers PE Option)
         bear_match = None
         bear_swing = {}
         if ENABLE_SWINGFILTER:
-            bear_swing = detect_parabolic_multi_swings(df_anchor.tail(80), side="BEAR", min_swings=3, max_bars_since_base=18)
+            bear_swing = detect_parabolic_multi_swings(df_anchor.tail(80), side="BEAR", min_swings=MIN_CASCADING_WAVES, max_bars_since_base=50)
             if bear_swing.get("matched", False):
                 m = scan_anchor_bcd_breakout_bearish(df_entry.tail(150), df_anchor.tail(80))
                 if m and is_anchor_after_terminal_base(df_anchor, m.get("CandleATime", m.get("CandleTime")), bear_swing):
                     bear_match = m
+        else:
+            bear_match = scan_anchor_bcd_breakout_bearish(df_entry.tail(150), df_anchor.tail(80))
 
         matched_side = None
         m = None
@@ -298,16 +303,18 @@ def _process_spot_symbol(sym, cfg):
 
 def run_cycle(kite=None, log_scan_ready=True):
     """Main scanning cycle across all Index Spot charts."""
-    global TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR, LOOKBACK_DAYS, MAX_RISK_PERCENT, INITIAL_CAPITAL, ENABLE_SWINGFILTER
+    global TIMEFRAME_ENTRY, TIMEFRAME_ANCHOR, LOOKBACK_DAYS, MAX_RISK_PERCENT, INITIAL_CAPITAL, ENABLE_SWINGFILTER, MIN_CASCADING_WAVES
 
     cfg = load_program_config_for_engine("index_spot")
     if cfg:
         TIMEFRAME_ENTRY = cfg.get("timeframe_entry", TIMEFRAME_ENTRY)
         TIMEFRAME_ANCHOR = cfg.get("timeframe_anchor", TIMEFRAME_ANCHOR)
-        LOOKBACK_DAYS = cfg.get("lookback_days", LOOKBACK_DAYS)
-        MAX_RISK_PERCENT = cfg.get("risk_percent", MAX_RISK_PERCENT)
-        INITIAL_CAPITAL = cfg.get("capital", INITIAL_CAPITAL)
-        ENABLE_SWINGFILTER = cfg.get("enable_swingfilter", ENABLE_SWINGFILTER)
+        LOOKBACK_DAYS = int(cfg.get("lookback_days", LOOKBACK_DAYS))
+        MAX_RISK_PERCENT = float(cfg.get("risk_percent", MAX_RISK_PERCENT))
+        INITIAL_CAPITAL = float(cfg.get("capital", INITIAL_CAPITAL))
+        sw_val = cfg.get("enable_swingfilter", ENABLE_SWINGFILTER)
+        ENABLE_SWINGFILTER = str(sw_val).lower() in ("true", "1", "yes") if isinstance(sw_val, (str, bool, int)) else bool(sw_val)
+        MIN_CASCADING_WAVES = int(cfg.get("min_cascading_waves", MIN_CASCADING_WAVES))
 
     temp_stored_trades = []
     logging.info(f"[INDEX_SPOT] Scanning Index Spot Charts ({list(INDEX_REGISTRY.keys())}) on {TIMEFRAME_ENTRY}...")
