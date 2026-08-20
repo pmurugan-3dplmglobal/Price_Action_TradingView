@@ -11,7 +11,7 @@ $targets = $procs | Where-Object {
         $_.CommandLine -match 'bull_index_trade_engine' -or
         $_.CommandLine -match 'bull_nifty50_scanner_executor' -or
         $_.CommandLine -match 'app_option_Trade' -or
-        $_.CommandLine -match 'app_Sock_Trade'
+        $_.CommandLine -match 'app_Stock_Trade'
     )
 }
 

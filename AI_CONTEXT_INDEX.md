@@ -64,7 +64,7 @@ when a task explicitly needs them**.
 |---|---|---|
 | `common/` | The "brain". `trading_core.py` is a re-export hub (do NOT alter core logic — dead-code removal only). Living logic: `timeframe_utils.py`, `registries.py`, `session.py`, `targets.py`, `patterns_bull.py`, `patterns_bear.py`, `position_monitor.py`, `display_writer.py`, `resolve.py`, `ema_engine.py`, `paths.py` (canonical paths), `dashboard_sl_overrides.py`, `trade_db.py`, `daily_trade_journal.py`, `equity_universe.py`, `spot_enricher.py` | Any strategy/engine/position/logic change |
 | `Trade_Option/` | Options Dashboard engine (port 6060). `app_option_Trade.py`, `stock_options_trade_engine.py`, `index_options_trade_engine.py`, UI in `templates/index.html` | Options dashboard / option engines / UI on port 6060 |
-| `Trade_Stock/` | Stock Trade Dashboard + scanners (port 6061). `app_Sock_Trade.py`, `stock_reversal_scanner.py` (single real impl, PROFILE-driven), wrappers `stock_bullish_reversal_scanner.py` / `stock_bearish_reversal_scanner.py`, UI in `templates/index.html` | Stock dashboard / scanners / UI on port 6061 |
+| `Trade_Stock/` | Stock Trade Dashboard + scanners (port 6061). `app_Stock_Trade.py`, `stock_reversal_scanner.py` (single real impl, PROFILE-driven), wrappers `stock_bullish_reversal_scanner.py` / `stock_bearish_reversal_scanner.py`, UI in `templates/index.html` | Stock dashboard / scanners / UI on port 6061 |
 | `AGENTS.md` | Technical code map (also loaded automatically as session instructions) | Always own the content; keep in sync when arch/ports change |
 | `ISSUE_MANAGEMENT.yaml` | Bug/feature tracker — RECORD every fix here | After each fix/feature |
 | `MASTER_DOCUMENTATION.yaml` | Master system doc — keep accurate | When behavior changes |

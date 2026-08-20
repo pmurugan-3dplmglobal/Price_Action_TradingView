@@ -39,4 +39,4 @@ Generic Open-Source Data Audit & Repository Cleanup:
 Feature:5  : Completed
 Legacy Broker Clutter Removal & Dashboard Clean-Up:
 - Removed 150+ lines of unused Zerodha Kite broker token login routes, broker session polling loops, and Zerodha order placement code blocks.
-- Streamlined app_option_Trade.py and app_Sock_Trade.py to run on 100% open-source market data and local JSON trade databases.
+- Streamlined app_option_Trade.py and app_Stock_Trade.py to run on 100% open-source market data and local JSON trade databases.

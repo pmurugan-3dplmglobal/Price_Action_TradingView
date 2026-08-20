@@ -8,6 +8,35 @@ meta:
   purpose: Document operational failures, root causes, regression fixes, and system enhancements.
 
 issues:
+  - id: BUGFIX-077
+    title: Typo Fix - Rename app_Sock_Trade.py to app_Stock_Trade.py
+    severity: LOW
+    category: Architecture / Refactoring / Dashboard
+    family: NAMING_CONVENTION
+    date_reported: "2026-08-20"
+    symptom: |
+      Stock trade dashboard script was named `app_Sock_Trade.py` due to a typo ("Sock" instead of "Stock").
+    root_cause: |
+      Historical typo in the filename and associated import / launcher / documentation references.
+    affected_files:
+      - Trade_Stock/app_Stock_Trade.py
+      - AGENTS.md
+      - AI_CONTEXT_INDEX.md
+      - CLOUD_DEPLOYMENT_GUIDE.md
+      - MASTER_DOCUMENTATION.yaml
+      - Notes_Inputs.txt
+      - Trade_Option/kill_all.ps1
+      - Trade_Stock/kill_all.ps1
+      - deploy_to_cloud.sh
+      - run_all_dashboards.bat
+      - run_stock_dashboard.bat
+      - scratch/run_full_regression_test.py
+    resolution: |
+      1. Renamed `Trade_Stock/app_Sock_Trade.py` to `Trade_Stock/app_Stock_Trade.py` via git mv.
+      2. Updated all references across launcher scripts (.bat, .ps1, .sh), test suites (run_full_regression_test.py), and documentation.
+      3. Verified 13/13 tests pass in regression suite.
+    status: RESOLVED
+
   - id: FEAT-076
     title: Index Spot Directional Trade Engine & Multi-Symbol Option Alias Resolution
     severity: HIGH

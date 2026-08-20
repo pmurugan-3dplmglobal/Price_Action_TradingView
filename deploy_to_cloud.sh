@@ -88,7 +88,7 @@ After=network.target
 [Service]
 User=$USER
 WorkingDirectory=$APP_DIR/Trade_Stock
-ExecStart=$APP_DIR/venv/bin/python $APP_DIR/Trade_Stock/app_Sock_Trade.py
+ExecStart=$APP_DIR/venv/bin/python $APP_DIR/Trade_Stock/app_Stock_Trade.py
 Restart=always
 RestartSec=5
 Environment=PYTHONUNBUFFERED=1

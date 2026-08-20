@@ -19,7 +19,7 @@ architecture:
       ├── Trade_Option Dashboard (app_option_Trade.py: 6060)
       │     ├── Index Options Engine (index_options_trade_engine.py)
       │     └── Stock Options Engine (stock_options_trade_engine.py)
-      └── Trade_Stock Dashboard (app_Sock_Trade.py: 6061)
+      └── Trade_Stock Dashboard (app_Stock_Trade.py: 6061)
             ├── Stock Bull Reversal (stock_bullish_reversal_scanner.py)
             └── Stock Bear Reversal (stock_bearish_reversal_scanner.py)
                   │
@@ -44,7 +44,7 @@ architecture:
       automated_strategy_exporter.py: "Plan 1 Multi-Timeframe Automated Daily Exporter (Index: 3m/5m/15m, Stock Option: 15m/60m)"
       run_export_scheduler_daemon.py: "Background Scheduler Daemon for 10:30 AM, 1:00 PM, and 3:15 PM exports"
     Trade_Stock:
-      app_Sock_Trade.py: "Stock Trade Dashboard (port 6061) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
+      app_Stock_Trade.py: "Stock Trade Dashboard (port 6061) with 1-Click BUY button on Scan Tab (/api/buy-scanned-trade)"
       stock_bullish_reversal_scanner.py: "Stock Bullish Reversal Scanner & Exporter"
       stock_bearish_reversal_scanner.py: "Stock Bearish Reversal Scanner & Exporter"
     backtest:
@@ -152,7 +152,7 @@ backtest_suite:
       rule_name: "Non-Negotiable Architecture Thumb Rule: Feature Isolation & Zero Regression"
       fundamental_principle: "New features, modules, or tools (e.g. Negation Analyzer, Exporters) MUST be strictly isolated and MUST NEVER alter, degrade, or break existing working functionality."
       enforcement_guidelines:
-        - "Engine Separation: Index Options Engine (index_options_trade_engine.py / app_option_Trade.py) and Stock Options Engine (stock_options_trade_engine.py / app_Sock_Trade.py) must maintain clear workspace and display isolation."
+        - "Engine Separation: Index Options Engine (index_options_trade_engine.py / app_option_Trade.py) and Stock Options Engine (stock_options_trade_engine.py / app_Stock_Trade.py) must maintain clear workspace and display isolation."
         - "Default View Integrity: Web UI dashboards must default their view filters to their corresponding core engine (Index Dashboard defaults to 'Index', Stock Dashboard defaults to 'Nifty 50')."
         - "Independent Testing: Any new API endpoint or scanner tool must be tested in isolation to verify zero side-effects on active trade execution, position recovery, and display files."
 
