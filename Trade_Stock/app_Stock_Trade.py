@@ -977,6 +977,8 @@ HTML_TEMPLATE = """
             });
 
             const filter = (document.getElementById('scan-engine-filter') || {}).value || 'all';
+            const engines = filter === 'all' ? ['nifty50', 'index'] : [filter];
+            const todayStr = (d.scan_display && d.scan_display.date) || new Date().toISOString().split('T')[0];
             let scanHtml = '';
             const colHeaders = '<th onclick="sortTable(this,0)">Symbol</th><th onclick="sortTable(this,1)">Contract</th><th onclick="sortTable(this,2)">Side</th><th onclick="sortTable(this,3)">Entry</th><th onclick="sortTable(this,4)">SL</th><th onclick="sortTable(this,5)">T1</th><th onclick="sortTable(this,6)">T2</th><th onclick="sortTable(this,7)">T3</th><th onclick="sortTable(this,8)">AncherT</th><th onclick="sortTable(this,9)">EntryTime</th><th onclick="sortTable(this,10)">Result</th><th onclick="sortTable(this,11)">Parabolic</th><th onclick="sortTable(this,12)">CF</th><th onclick="sortTable(this,13)">RR</th><th style="text-align:center">Action</th>';
             function tradeRow(t, resultBadge, eng) {
@@ -1027,7 +1029,6 @@ HTML_TEMPLATE = """
 
                 return `<tr><td>${symLink}</td><td style="font-size:11px">${t.contract||''}</td><td>${t.side||''}</td><td>${entry}</td><td>${sl}</td><td>${t1v}</td><td>${t2v}</td><td>${t3v}</td><td style="font-size:11px">${atFormatted}</td><td style="font-size:11px">${etFormatted}</td><td><span class="badge ${resultBadge}">${res}</span></td><td>${paraBadge}</td><td>${cf}</td><td>${rr}</td>${actCell}</tr>`;
             }
-            const engines = filter === 'all' ? ['nifty50', 'index'] : [filter];
             engines.forEach(eng => {
                 const data = sd[eng];
                 if (!data) return;
