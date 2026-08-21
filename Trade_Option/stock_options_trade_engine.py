@@ -231,6 +231,7 @@ def resolve_option_contract(symbol, spot, step, opt_type, target_strike=None):
                 if not future.empty:
                     expiries = future['expiry_dt'].unique()
                     curr_exp = expiries[0]
+                    days_rem = (curr_exp - today).days
                     # Expiry Week / 85% Threshold Rule: If <= 6 days remaining to monthly expiry, select NEXT MONTH
                     if days_rem <= 6 and len(expiries) > 1:
                         target_exp = expiries[1]
