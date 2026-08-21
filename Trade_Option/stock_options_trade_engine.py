@@ -416,9 +416,9 @@ def run_scan_cycle(kite):
     temp_stored_trades = []
 
     if is_fyers_authenticated():
-        logging.info("[FYERS_DATA] Scanning Stock Option Premium Charts in parallel via Fyers API...")
+        logging.info(f"[FYERS_DATA] Scanning {len(scan_order)} F&O Stock Option Premium Charts in parallel via Fyers API...")
         tasks = []
-        with ThreadPoolExecutor(max_workers=4) as pool:
+        with ThreadPoolExecutor(max_workers=8) as pool:
             for symbol in scan_order:
                 config = STOCK_REGISTRY[symbol]
                 with position_lock:
@@ -427,14 +427,15 @@ def run_scan_cycle(kite):
                 chain = fetch_fyers_option_chain(symbol, strikecount=max(STRIKE_RANGE, 1))
                 for opt in chain:
                     tasks.append(pool.submit(_process_fyers_stock_option_strike, opt, symbol, config))
-                time.sleep(0.08)
+                time.sleep(0.04)
 
             for f in as_completed(tasks):
                 res = f.result()
                 if res:
                     temp_stored_trades.append(res)
     else:
-        with ThreadPoolExecutor(max_workers=3) as pool:
+        logging.info(f"[KITE_DATA] Scanning {len(scan_order)} F&O Stock Universe in parallel via Kite API...")
+        with ThreadPoolExecutor(max_workers=8) as pool:
             futures = {}
             for symbol in scan_order:
                 config = STOCK_REGISTRY[symbol]

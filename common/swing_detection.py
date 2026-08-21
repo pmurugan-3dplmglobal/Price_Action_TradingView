@@ -108,13 +108,15 @@ def extract_swing_pivots(
     df: pd.DataFrame, 
     side: str = "BULL",
     min_candles_per_leg: int = 3,
-    include_endpoints: bool = True
+    include_endpoints: bool = True,
+    min_atr_factor: float = 0.6
 ) -> List[int]:
     """
     Extracts local extrema indices for swing waves, ignoring dead zero-volume flatline candles.
     For BULL: extracts swing low indices L1, L2, L3, ...
     For BEAR: extracts swing high indices H1, H2, H3, ...
     Filters adjacent duplicate extrema by retaining the most extreme bar.
+    Filters micro-ripples using ATR displacement (>= min_atr_factor * ATR).
     """
     w = max(int(min_candles_per_leg), 1)
     if df is None or len(df) < (w * 2 + 1):
@@ -126,8 +128,16 @@ def extract_swing_pivots(
         series = _get_series(df, col).values.astype(float)
         highs = _get_series(df, 'high').values.astype(float)
         lows = _get_series(df, 'low').values.astype(float)
+        closes = _get_series(df, 'close').values.astype(float)
         volumes = _get_series(df, 'volume').values.astype(float) if 'volume' in [c.lower() for c in df.columns] else np.ones(len(df))
         n = len(series)
+
+        # Dynamic 14-period ATR calculation
+        tr = np.zeros(n)
+        tr[0] = highs[0] - lows[0]
+        for idx in range(1, n):
+            tr[idx] = max(highs[idx] - lows[idx], abs(highs[idx] - closes[idx - 1]), abs(lows[idx] - closes[idx - 1]))
+        atr_arr = pd.Series(tr).rolling(14, min_periods=1).mean().values
         
         raw_pivots: List[int] = []
         
@@ -150,10 +160,18 @@ def extract_swing_pivots(
                 continue
             window = series[i - left_w : i + right_w + 1]
             target = series[i]
+
+            cur_atr = atr_arr[i] if not np.isnan(atr_arr[i]) and atr_arr[i] > 0 else (target * 0.015)
+            min_disp = min_atr_factor * cur_atr
+
             if side_upper == "BULL" and target == np.min(window):
-                raw_pivots.append(i)
+                window_highs = highs[i - left_w : i + right_w + 1]
+                if min_atr_factor <= 0 or (np.max(window_highs) - target) >= min_disp:
+                    raw_pivots.append(i)
             elif side_upper == "BEAR" and target == np.max(window):
-                raw_pivots.append(i)
+                window_lows = lows[i - left_w : i + right_w + 1]
+                if min_atr_factor <= 0 or (target - np.min(window_lows)) >= min_disp:
+                    raw_pivots.append(i)
                 
         # Optional: check if end of series is a terminal pivot
         if include_endpoints and n > w:

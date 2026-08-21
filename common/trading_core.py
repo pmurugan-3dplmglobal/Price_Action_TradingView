@@ -628,6 +628,8 @@ def find_anchor_ll_sweep(df):
       1. Need > 2 candles (at least 3 candles gap) between Low 1 and Low 2.
       2. In-between candles must NOT close below Low 1 (wicks allowed).
       3. Low 2 sweeps below Low 1.
+      4. Intermediate Swing Rally Filter: in-between candles must bounce to at least Low 1 + max(0.8 * ATR, 1.5%).
+      5. Confirmation Check: bounce candle must close firmly above Sweep candle's high.
     """
     if len(df) < 30:
         return None
@@ -651,10 +653,33 @@ def find_anchor_ll_sweep(df):
         if (inbetween_df['close'] < low_1).any():
             return None
 
+    # Calculate 14-period dynamic ATR
+    highs = df['high'].astype(float)
+    lows = df['low'].astype(float)
+    closes = df['close'].astype(float)
+    prev_closes = closes.shift(1)
+    tr = pd.concat([(highs - lows), (highs - prev_closes).abs(), (lows - prev_closes).abs()], axis=1).max(axis=1)
+    atr = float(tr.tail(14).mean()) if len(tr) >= 14 else float(tr.mean())
+    if pd.isna(atr) or atr <= 0:
+        atr = low_1 * 0.015
+
+    # Intermediate Swing Rally Filter: bounce must reach at least Low 1 + max(0.8 * ATR, 1.5% of Low 1)
+    min_bounce_level = low_1 + max(0.8 * atr, 0.015 * low_1)
+    if inbetween_df.empty or float(inbetween_df['high'].max()) < min_bounce_level:
+        return None
+
     sweep_candle, bounce_candle, confirm_candle_1, confirm_candle_2 = df.iloc[-4], df.iloc[-3], df.iloc[-2], df.iloc[-1]
     sweep_low = float(sweep_candle['low'])
     is_red = float(sweep_candle['close']) < float(sweep_candle['open'])
     is_green = float(sweep_candle['close']) >= float(sweep_candle['open'])
+
+    # Confirmation Check: Bounce candle must close firmly above Sweep candle's high
+    if not (float(bounce_candle['close']) > float(sweep_candle['high'])):
+        return None
+
+    # Confirm candles must not close below sweep_low
+    if float(confirm_candle_1['close']) < sweep_low or float(confirm_candle_2['close']) < sweep_low:
+        return None
 
     # Var 1: Red sweep candle (dips/closes below Low 1, recovered by bounce candle)
     v1 = is_red and (sweep_low < low_1) and (float(sweep_candle['close']) > low_1)
@@ -662,6 +687,9 @@ def find_anchor_ll_sweep(df):
     
     # Var 2 (Page 10): Green/Neutral wick sweep candle (wick pierces Low 1, body closes green above Low 1)
     v3 = is_green and (sweep_low < low_1) and (float(sweep_candle['close']) > low_1)
+
+    if not (v1 or v2 or v3):
+        return None
 
     pattern_name = "BULL_A_LL_Sweep_Var1" if (v1 or v2) else "BULL_A_LL_Sweep_Var2"
 
@@ -2855,6 +2883,8 @@ def find_anchor_hh_sweep(df):
       1. Need > 2 candles (at least 3 candles gap) between High 1 and High 2.
       2. In-between candles must NOT close above High 1 (wicks allowed).
       3. High 2 sweeps above High 1.
+      4. Intermediate Pullback Filter: in-between candles must pullback to at least High 1 - max(0.8 * ATR, 1.5%).
+      5. Confirmation Check: rejection candle must close firmly below Sweep candle's low.
     """
     if len(df) < 30:
         return None
@@ -2877,6 +2907,21 @@ def find_anchor_hh_sweep(df):
     if not inbetween_df.empty:
         if (inbetween_df['close'] > high_1).any():
             return None
+
+    # Calculate 14-period dynamic ATR
+    highs = df['high'].astype(float)
+    lows = df['low'].astype(float)
+    closes = df['close'].astype(float)
+    prev_closes = closes.shift(1)
+    tr = pd.concat([(highs - lows), (highs - prev_closes).abs(), (lows - prev_closes).abs()], axis=1).max(axis=1)
+    atr = float(tr.tail(14).mean()) if len(tr) >= 14 else float(tr.mean())
+    if pd.isna(atr) or atr <= 0:
+        atr = high_1 * 0.015
+
+    # Intermediate Pullback Filter: pullback must reach down to at least High 1 - max(0.8 * ATR, 1.5% of High 1)
+    min_pullback_level = high_1 - max(0.8 * atr, 0.015 * high_1)
+    if inbetween_df.empty or float(inbetween_df['low'].min()) > min_pullback_level:
+        return None
 
     sweep_candle, rejection_candle, confirm_candle_1, confirm_candle_2 = df.iloc[-4], df.iloc[-3], df.iloc[-2], df.iloc[-1]
     sweep_high = float(sweep_candle['high'])

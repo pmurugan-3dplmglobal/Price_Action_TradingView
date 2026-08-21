@@ -96,7 +96,7 @@ PROGRAMS = {
     "nifty50": {
         "name": "Stock Options Trade Engine",
         "file": "stock_options_trade_engine.py",
-        "desc": "Scans Nifty 50 stock options, picks best setup & executes",
+        "desc": "Scans full NSE F&O stock options universe (210+ scripts), picks best setup & executes",
         "color": "#3fb950",
         "log_file": NIFTY50_LOG_FILE,
         "config_fields": {

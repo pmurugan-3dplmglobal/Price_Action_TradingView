@@ -1810,6 +1810,30 @@ issues:
       3. Verified DOM IDs across all templates with zero missing elements and ran the 13-test regression suite with 100% pass.
     status: RESOLVED
 
+  - id: FEATURE-014
+    title: Enhanced Swing Pattern Detection & Full F&O Universe Scanning (Port 6060)
+    severity: ENHANCEMENT
+    category: Strategy Core / Pattern Detection
+    date_reported: "2026-08-21"
+    symptom: |
+      Flat sideways consolidations triggered false Lower Low (LL) and Higher High (HH) sweep setups, micro-ripples registered as macro swing pivots, and Stock Options engine on port 6060 was described as Nifty 50 only.
+    root_cause: |
+      1. find_anchor_ll_sweep and find_anchor_hh_sweep lacked dynamic ATR-based intermediate displacement filters and firm sweep-boundary confirmation checks.
+      2. extract_swing_pivots lacked ATR displacement filtering (min_atr_factor = 0.6) to separate genuine macro swings from micro fluctuations.
+      3. stock_options_trade_engine thread pool concurrency was small for scanning all 210+ F&O scripts.
+    affected_files:
+      - common/trading_core.py
+      - common/swing_detection.py
+      - Trade_Option/stock_options_trade_engine.py
+      - Trade_Option/app_option_Trade.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Enhanced find_anchor_ll_sweep with 14-period dynamic ATR, intermediate swing rally filter (bounce >= Low 1 + max(0.8 * ATR, 1.5%)), and firm bounce close above sweep high confirmation.
+      2. Enhanced find_anchor_hh_sweep with 14-period dynamic ATR, intermediate pullback filter (pullback <= High 1 - max(0.8 * ATR, 1.5%)), and rejection close below sweep low confirmation.
+      3. Added min_atr_factor = 0.6 to extract_swing_pivots to filter micro-ripples by ATR displacement.
+      4. Optimized stock_options_trade_engine concurrency to max_workers=8 to scan the complete 210+ NSE F&O universe on Port 6060.
+    status: RESOLVED
+
   - id: ISSUE-068
     title: Stock Dashboard Scanner Path Alignment and Option Position Isolation
     severity: LOW
