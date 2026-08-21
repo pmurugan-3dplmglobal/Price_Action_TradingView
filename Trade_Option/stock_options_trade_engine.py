@@ -576,7 +576,7 @@ def execute_highest_rr_trade(kite, staged):
 # ──────────────────────────────────────────────
 
 def run_anchor_scan(kite):
-    logging.info("On-demand scan requested: executing full A-B-C-D breakout scan across Nifty 50 option contracts...")
+    logging.info(f"On-demand scan requested: executing full A-B-C-D breakout scan across all {len(STOCK_REGISTRY)} F&O stock option contracts...")
     staged = run_scan_cycle(kite)
     with position_lock:
         shared_write_display(staged or [], dict(ACTIVE_POSITIONS), SCAN_DISPLAY_FILE, "nifty50")
@@ -669,7 +669,7 @@ def main_scan_loop(kite):
                         save_state()
                 except Exception as e:
                     logging.warning(f"Override apply failed: {e}")
-            logging.info("[BEAT] Starting Nifty 50 scan cycle...")
+            logging.info(f"[BEAT] Starting F&O Stock Options scan cycle ({len(STOCK_REGISTRY)} stocks)...")
             if os.path.exists(ANCHOR_SCAN_REQUEST_FILE):
                 try:
                     with open(ANCHOR_SCAN_REQUEST_FILE) as f:

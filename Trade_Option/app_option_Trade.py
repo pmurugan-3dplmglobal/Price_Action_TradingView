@@ -94,9 +94,9 @@ PROGRAMS = {
         }
     },
     "nifty50": {
-        "name": "Stock Options Trade Engine",
+        "name": "Stock Options Trade Engine (210 F&O)",
         "file": "stock_options_trade_engine.py",
-        "desc": "Scans full NSE F&O stock options universe (210+ scripts), picks best setup & executes",
+        "desc": "Scans all 210+ NSE F&O stock option premium charts in parallel, picks best setup & executes",
         "color": "#3fb950",
         "log_file": NIFTY50_LOG_FILE,
         "config_fields": {
@@ -1050,7 +1050,7 @@ HTML_TEMPLATE = """
                     }
                 });
                 const staged = Object.values(bestBySymbol);
-                const engLabel = eng === 'nifty50' ? 'Stock Options' : (eng === 'index_spot' ? 'Index Spot Directional' : 'Index Options');
+                const engLabel = eng === 'nifty50' ? 'F&O Stock Options' : (eng === 'index_spot' ? 'Index Spot Directional' : 'Index Options');
                 if (staged.length) {
                     scanHtml += '<div class="scan-section-title">[' + engLabel + '] Scan Results (' + staged.length + ')</div>';
                     scanHtml += '<div style="overflow-x:auto"><table><thead><tr>' + colHeaders + '</tr></thead><tbody>';
@@ -1161,7 +1161,7 @@ HTML_TEMPLATE = """
                     const item = {
                         symbol: kp.symbol || c_name,
                         contract: c_name,
-                        engine: (kp.exchange === 'NFO' || (c_name||'').includes('NIFTY') || (c_name||'').includes('BANK')) ? 'Index' : 'Nifty 50',
+                        engine: (kp.exchange === 'NFO' || (c_name||'').includes('NIFTY') || (c_name||'').includes('BANK')) ? 'Index' : 'F&O Stock Options',
                         pattern: kp.pattern || (dbMatch && dbMatch.pattern ? dbMatch.pattern : 'OPEN_TRADE'),
                         entry_spot: kp.entry_spot || kp.entry_price || (dbMatch ? dbMatch.entry_spot : ''),
                         quantity: kp.quantity || (dbMatch ? dbMatch.position_size : 1),
@@ -1200,7 +1200,7 @@ HTML_TEMPLATE = """
                 mergedPositions.push({
                     symbol: t.symbol || contract,
                     contract: contract,
-                    engine: (t.engine === 'index' || (t.symbol||'').includes('NIFTY') || (t.symbol||'').includes('BANK')) ? 'Index' : 'Nifty 50',
+                    engine: (t.engine === 'index' || (t.symbol||'').includes('NIFTY') || (t.symbol||'').includes('BANK')) ? 'Index' : 'F&O Stock Options',
                     pattern: t.pattern || '',
                     entry_spot: t.entry_spot !== undefined && t.entry_spot !== null ? t.entry_spot : '',
                     current_sl: t.current_sl !== undefined && t.current_sl !== null ? t.current_sl : '',
@@ -2066,7 +2066,7 @@ HTML_TEMPLATE = """
                                 <option value="all" selected>All Options</option>
                                 <option value="index">Index Options</option>
                                 <option value="index_spot">Index Spot Directional</option>
-                                <option value="nifty50">Stock Options</option>
+                                <option value="nifty50">F&O Stock Options (210)</option>
                             </select>
                             <button class="btn-scan-clear" onclick="clearScanData()" style="padding:2px 10px;background:inherit;border:1px solid #f85149;color:#f85149;border-radius:4px;font-size:10px;cursor:pointer">Clear</button>
                             <button class="btn-scan-export" onclick="scanExport()" style="padding:2px 10px;background:inherit;border:1px solid #58a6ff;color:#58a6ff;border-radius:4px;font-size:10px;cursor:pointer">Export</button>
@@ -2102,7 +2102,7 @@ HTML_TEMPLATE = """
                                 <option value="all">All</option>
                                 <option value="index">Index</option>
                                 <option value="index_spot">Index Spot Directional</option>
-                                <option value="nifty50">Nifty 50</option>
+                                <option value="nifty50">F&O Stock Options</option>
                             </select>
                             <button class="clear-logs-btn" onclick="clearLogs()">Clear Logs</button>
                         </div>
@@ -2118,7 +2118,7 @@ HTML_TEMPLATE = """
                                 <option value="all">All</option>
                                 <option value="index">Index</option>
                                 <option value="index_spot">Index Spot Directional</option>
-                                <option value="nifty50">Nifty 50</option>
+                                <option value="nifty50">F&O Stock Options</option>
                             </select>
                             <button class="clear-logs-btn" onclick="clearJournal()">Clear</button>
                         </div>
@@ -2156,7 +2156,7 @@ HTML_TEMPLATE = """
                             <div>
                                 <label style="font-size:11px;color:#8b949e;display:block;margin-bottom:4px;">Engine / Market</label>
                                 <select id="an-engine" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;font-size:12px;">
-                                    <option value="nifty50">Nifty 50 Stock Options</option>
+                                    <option value="nifty50">All F&O Stock Options (210 scripts)</option>
                                     <option value="index">Index Options</option>
                                 </select>
                             </div>
