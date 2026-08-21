@@ -11,25 +11,48 @@ LOG_DIR = os.path.join(BASE_DIR, "output", "logs")
 _fyers_instance = None
 
 def load_fyers_config():
-    if not os.path.exists(CONFIG_FILE):
-        return None
-    try:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        logging.warning(f"Failed to load Fyers config: {e}")
-        return None
+    candidates = [
+        CONFIG_FILE,
+        os.path.join(BASE_DIR, "Trade_Option", "input", "fyers_config.json"),
+        os.path.join(BASE_DIR, "Trade_Stock", "input", "fyers_config.json"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            try:
+                with open(c, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+                    if cfg and cfg.get("client_id"):
+                        return cfg
+            except Exception:
+                pass
+    return None
 
 def load_fyers_token():
-    if not os.path.exists(TOKEN_FILE):
-        return None
-    try:
-        with open(TOKEN_FILE, "r", encoding="utf-8") as f:
-            token = f.read().strip()
-            return token if token else None
-    except Exception as e:
-        logging.warning(f"Failed to read Fyers token file: {e}")
-        return None
+    candidates = [
+        TOKEN_FILE,
+        os.path.join(BASE_DIR, "Trade_Option", "input", "fyers_access_token.txt"),
+        os.path.join(BASE_DIR, "Trade_Stock", "input", "fyers_access_token.txt"),
+    ]
+    best_file = None
+    best_mtime = 0
+    for c in candidates:
+        if os.path.exists(c):
+            try:
+                mtime = os.path.getmtime(c)
+                with open(c, "r", encoding="utf-8") as f:
+                    tok = f.read().strip()
+                if tok and mtime > best_mtime:
+                    best_mtime = mtime
+                    best_file = c
+            except Exception:
+                pass
+    if best_file:
+        try:
+            with open(best_file, "r", encoding="utf-8") as f:
+                return f.read().strip()
+        except Exception as e:
+            logging.warning(f"Failed to read Fyers token file: {e}")
+    return None
 
 def get_fyers_session(force_refresh=False):
     """Returns an authenticated FyersModel client instance if valid token exists."""
