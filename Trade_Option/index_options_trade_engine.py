@@ -178,8 +178,8 @@ def resolve_option_contract(base_symbol, spot_price, step_size, option_type, exp
 def _process_fyers_option_strike(opt, sym, cfg):
     try:
         opt_sym = opt.get('symbol')
-        df_entry = fetch_fyers_candles(opt_sym, TIMEFRAME_ENTRY, lookback_days=min(LOOKBACK_DAYS, 5))
-        df_anchor = fetch_fyers_candles(opt_sym, TIMEFRAME_ANCHOR, lookback_days=min(LOOKBACK_DAYS, 5))
+        df_entry = fetch_fyers_candles(opt_sym, TIMEFRAME_ENTRY, lookback_days=min(LOOKBACK_DAYS, 15))
+        df_anchor = fetch_fyers_candles(opt_sym, TIMEFRAME_ANCHOR, lookback_days=min(LOOKBACK_DAYS, 15))
         if df_entry is None or df_anchor is None or len(df_entry) < 20:
             return None
 

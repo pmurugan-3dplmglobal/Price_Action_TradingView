@@ -271,8 +271,8 @@ def reconcile_positions(kite):
 def _process_fyers_stock_option_strike(opt, sym, cfg):
     try:
         opt_sym = opt.get('symbol')
-        df_entry = fetch_fyers_candles(opt_sym, TIMEFRAME_ENTRY, lookback_days=min(LOOKBACK_DAYS, 5))
-        df_anchor = fetch_fyers_candles(opt_sym, TIMEFRAME_ANCHOR, lookback_days=min(LOOKBACK_DAYS, 5))
+        df_entry = fetch_fyers_candles(opt_sym, TIMEFRAME_ENTRY, lookback_days=min(LOOKBACK_DAYS, 30))
+        df_anchor = fetch_fyers_candles(opt_sym, TIMEFRAME_ANCHOR, lookback_days=min(LOOKBACK_DAYS, 30))
         if df_entry is None or df_anchor is None or len(df_entry) < 20:
             return None
 
