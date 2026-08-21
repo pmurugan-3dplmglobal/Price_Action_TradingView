@@ -231,11 +231,10 @@ def resolve_option_contract(symbol, spot, step, opt_type, target_strike=None):
                 if not future.empty:
                     expiries = future['expiry_dt'].unique()
                     curr_exp = expiries[0]
-                    days_rem = (curr_exp - today).days
-                    # 85% Threshold Rule: If <= 4 days remaining to monthly expiry, select NEXT MONTH
-                    if days_rem <= 4 and len(expiries) > 1:
+                    # Expiry Week / 85% Threshold Rule: If <= 6 days remaining to monthly expiry, select NEXT MONTH
+                    if days_rem <= 6 and len(expiries) > 1:
                         target_exp = expiries[1]
-                        logging.info(f"[STOCK EXPIRY ROLLOVER 85%] {symbol}: {days_rem}d to expiry ({curr_exp}) -> Selected NEXT MONTH ({target_exp})")
+                        logging.info(f"[STOCK EXPIRY ROLLOVER] {symbol}: {days_rem}d to expiry ({curr_exp}) -> Selected NEXT MONTH ({target_exp})")
                         sel = future[future['expiry_dt'] == target_exp].iloc[0]
                     else:
                         sel = future.iloc[0]

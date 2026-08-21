@@ -1834,6 +1834,26 @@ issues:
       4. Optimized stock_options_trade_engine concurrency to max_workers=8 to scan the complete 210+ NSE F&O universe on Port 6060.
     status: RESOLVED
 
+  - id: FEATURE-015
+    title: Stock Options Near-Expiry Next-Month Rollover Enhancement (<= 6 Days Threshold)
+    severity: ENHANCEMENT
+    category: Strategy Core / Expiry Management
+    date_reported: "2026-08-21"
+    symptom: |
+      During expiry week (and the Friday preceding expiry week), current-month stock option contracts face severe theta decay, lower liquidity, and physical delivery risks, reducing the number of valid breakout setups in Today's Scan.
+    root_cause: |
+      1. resolve_option_strikes and stock_options_trade_engine had a strict <= 4 days threshold, preventing next-month rollover on Friday/weekend before expiry week.
+      2. Fyers option chain fetcher queried only the default first expiry without appending next-month contracts when nearing monthly expiry.
+    affected_files:
+      - common/trading_core.py
+      - Trade_Option/stock_options_trade_engine.py
+      - common/fyers_data.py
+      - ISSUE_MANAGEMENT.yaml
+    resolution: |
+      1. Updated stock option expiry rollover threshold from <= 4 days to <= 6 days in common/trading_core.py and Trade_Option/stock_options_trade_engine.py.
+      2. Enhanced fetch_fyers_option_chain in common/fyers_data.py to automatically query and include next-month expiry contracts whenever current expiry has <= 6 days remaining.
+    status: RESOLVED
+
   - id: ISSUE-068
     title: Stock Dashboard Scanner Path Alignment and Option Position Isolation
     severity: LOW

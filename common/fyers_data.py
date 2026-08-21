@@ -274,6 +274,29 @@ def fetch_fyers_option_chain(underlying_symbol, strikecount=3, retries=4):
             res = _rate_limited_fyers_call(fyers.optionchain, data=data)
             if isinstance(res, dict) and res.get("s") == "ok":
                 chain = res.get("data", {}).get("optionsChain", [])
+                
+                # Check for near-expiry rollover (<= 6 days to monthly expiry)
+                expiry_data = res.get("data", {}).get("expiryData", [])
+                if expiry_data and len(expiry_data) > 1:
+                    try:
+                        exp_str = expiry_data[0].get("date", "")
+                        if exp_str:
+                            exp_d = dt.strptime(exp_str, "%d-%b-%Y").date()
+                            days_rem = (exp_d - dt.now().date()).days
+                            if days_rem <= 6:
+                                next_ts = expiry_data[1].get("expiry")
+                                if next_ts:
+                                    data_next = {"symbol": fyers_symbol, "strikecount": strikecount, "timestamp": next_ts}
+                                    res_next = _rate_limited_fyers_call(fyers.optionchain, data=data_next)
+                                    if isinstance(res_next, dict) and res_next.get("s") == "ok":
+                                        next_chain = res_next.get("data", {}).get("optionsChain", [])
+                                        if next_chain:
+                                            # Include both current and next month contracts
+                                            chain = list(chain) + list(next_chain)
+                                            logging.debug(f"[FYERS EXPIRY ROLLOVER] {fyers_symbol}: {days_rem}d to {exp_str} -> Appended next month ({expiry_data[1].get('date')})")
+                    except Exception as exp_err:
+                        logging.debug(f"Fyers expiry parse note for {fyers_symbol}: {exp_err}")
+
                 valid_options = []
                 for item in chain:
                     opt_type = item.get("option_type", "").upper()

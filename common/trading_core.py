@@ -2708,10 +2708,11 @@ def resolve_option_strikes(nfo_instruments, base_symbol, spot_price, step_size, 
                 curr_exp = expiries[0]
                 days_rem = (curr_exp - today).days
                 is_stock_contract = base_symbol.strip().upper() not in ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX", "BANKEX"]
-                if is_stock_contract and days_rem <= 4 and len(expiries) > 1:
+                if is_stock_contract and days_rem <= 6 and len(expiries) > 1:
                     target_exp = expiries[1]
                     sub = future[future['expiry_dt'] == target_exp]
                     c = sub.iloc[0] if not sub.empty else future.iloc[0]
+                    logging.info(f"[STOCK EXPIRY ROLLOVER] {base_symbol}: {days_rem}d to expiry ({curr_exp}) -> Selected NEXT MONTH ({target_exp})")
                 else:
                     c = future.iloc[0]
             elif not df.empty:
